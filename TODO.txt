@@ -1,0 +1,25 @@
+# RestoFlow Backend TODO & Progress Log
+
+## ✅ Amalga oshirilgan ishlar
+- [x] Django loyihasini (`qrmenu_backend`) noldan ishga tushirish.
+- [x] Kerakli kutubxonalarni o'rnatish (`djangorestframework`, `Pillow`, `drf-spectacular`).
+- [x] `restaurants` ilovasi yaratildi (Models: Restaurant, Table, Category, Dish).
+- [x] `orders` ilovasi yaratildi (Models: Order, OrderItem).
+- [x] `restaurants` va `orders` uchun API Serializer'lari yozildi.
+- [x] `ModelViewSet` yordamida CRUD API endpointlari yaratildi.
+- [x] URL yo'nalishlari (`/api/`) sozlandi va media fayllar uchun yo'l ochildi.
+- [x] Django Admin paneli modellar uchun moslashtirildi (`admin.py` inline va filterlar bilan).
+- [x] Ma'lumotlar bazasi migratsiyalari (`migrate`) muvaffaqiyatli amalga oshirildi.
+- [x] **Auth tizimi**: JWT yordamida foydalanuvchi va restoran administratorlarini autentifikatsiya qilish.
+- [x] **KDS (Kitchen Display System)**: Oshxona uchun API endpointlar (status o'zgartirish va filtrlar).
+- [x] **Tests**: Asosiy API endpointlar uchun unit testlar yozish.
+- [x] **Dokumentatsiya**: API uchun Swagger/OpenAPI (`drf-spectacular`) sozlash.
+- [x] **Refactoring (Paketlarga bo'lish)**: `models`, `serializers`, `views` paketlari yaratildi.
+- [x] **Refactoring (Apps birlashtirish)**: `accounts` va `orders` ilovalari `apps/` paketi ichiga ko'chirildi.
+
+## 🚧 Kelgusi rejalar
+- [ ] **Migratsiyalarni to'g'irlash**: `apps/` paketi o'zgarishi munosabati bilan buzilgan migratsiya fayllarini qayta sozlash va bazani yangilash.
+- [ ] **Deployment**: Docker va Nginx konfiguratsiyasini yaratish, ishlab chiqarish muhitiga tayyorlash.
+- [ ] **Kengaytirilgan Testlar**: Refactoringdan so'ng, tizimning barcha qismlarini (Auth, Orders, Restaurants) to'liq unit va integratsiya testlaridan o'tkazish.
+- [ ] **Kod Sifati**: Linting va kodni tozalash (masalan, `flake8`, `black` yordamida).
+- [ ] **Performance**: Ma'lumotlar bazasi so'rovlarini optimallashtirish (indeksatsiya, queryset'larni yaxshilash).
