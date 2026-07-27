@@ -1,0 +1,29 @@
+from rest_framework import serializers
+
+from apps.models.restaurants import Restaurant, Table, Category, Dish
+
+
+class RestaurantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Restaurant
+        fields = ['id', 'name', 'slug', 'is_active', 'subscription_end_date', 'owner', 'created_at']
+
+
+class TableSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Table
+        fields = ['id', 'restaurant', 'number', 'qr_hash', 'is_active']
+
+
+class DishSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Dish
+        fields = ['id', 'category', 'name', 'description', 'price', 'image', 'is_available']
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    dishes = DishSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Category
+        fields = ['id', 'restaurant', 'name', 'slug', 'description', 'is_active', 'ordering', 'dishes']
