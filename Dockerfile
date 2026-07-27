@@ -15,4 +15,5 @@ RUN pip install uv && uv sync
 
 COPY . .
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Ma'lumotlar bazasi migratsiyalarini avtomatik yurgizish va serverni Gunicorn orqali ochish
+CMD ["uv", "run", "gunicorn", "project.wsgi:application", "--bind", "0.0.0.0:8000"]
