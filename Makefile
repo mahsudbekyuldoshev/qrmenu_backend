@@ -17,10 +17,10 @@ migrate:
 	python manage.py  migrate
 
 runserver:
-	$(MANAGE) runserver
+	python manage.py runserver
 
-superuser:
-	$(MANAGE) createsuperuser
+user:
+	python manage.py createsuperuser
 
 docker-up:
 	docker-compose up --build

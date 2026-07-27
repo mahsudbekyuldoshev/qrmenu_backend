@@ -1,21 +1,23 @@
 from django.db import models
+from django.db.models import Model, OneToOneField, CASCADE, CharField, BooleanField, DateTimeField
+
 from apps.models.restaurants import Restaurant
 
-class Subscription(models.Model):
+class Subscription(Model):
     """
     Obuna modeli.
     Restoranlarning tarif rejalari va obuna holatlarini boshqarish uchun.
     """
-    restaurant = models.OneToOneField(
+    restaurant = OneToOneField(
         Restaurant, 
-        on_delete=models.CASCADE, 
+        CASCADE,
         related_name="subscription_info",
         verbose_name="Restoran"
     )
-    plan_name = models.CharField(max_length=100, verbose_name="Tarif nomi")
-    is_active = models.BooleanField(default=True, verbose_name="Faol")
-    start_date = models.DateTimeField(auto_now_add=True, verbose_name="Boshlanish vaqti")
-    end_date = models.DateTimeField(verbose_name="Tugash vaqti")
+    plan_name = CharField(max_length=100, verbose_name="Tarif nomi")
+    is_active = BooleanField(default=True, verbose_name="Faol")
+    start_date = DateTimeField(auto_now_add=True, verbose_name="Boshlanish vaqti")
+    end_date = DateTimeField(verbose_name="Tugash vaqti")
 
     class Meta:
         verbose_name = "Obuna"

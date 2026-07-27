@@ -11,5 +11,6 @@ dependencies = [
     "pillow>=12.3.0",
     "psycopg2-binary>=2.9.12",
     "python-dotenv>=1.2.2",
+    "qrcode[pil]>=8.2",
     "ruff>=0.16.0",
 ]
