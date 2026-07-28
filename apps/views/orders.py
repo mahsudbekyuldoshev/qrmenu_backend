@@ -1,29 +1,32 @@
-from rest_framework import viewsets
+from rest_framework import permissions, viewsets
+from rest_framework.permissions import IsAuthenticated
 
 from apps.models.orders import Order
+from apps.permission import IsRestaurantStaff
 from apps.serializers.orders import OrderSerializer
 
 
 class OrderViewSet(viewsets.ModelViewSet):
     """
-    Buyurtmalarni boshqarish uchun ViewSet.
-    KDS (Kitchen Display System) uchun statuslar bo'yicha filterlash imkoniyati bilan.
+    Buyurtmalar — direktor, ofitsiant VA oshpaz uchun ham ochiq (IsRestaurantStaff),
+    chunki KDS (oshpaz) va Waiter (ofitsiant) ekranlari ham shu API orqali statusni
+    o'zgartiradi. Faqat direktorga cheklab qo'yish noto'g'ri bo'lardi.
     """
-    queryset = Order.objects.all()
+
     serializer_class = OrderSerializer
+    permission_classes = IsAuthenticated, IsRestaurantStaff
 
     def get_queryset(self):
-        queryset = Order.objects.select_related("restaurant", "table").prefetch_related("items", "items__dish")
-        restaurant_id = self.request.query_params.get('restaurant')
-        restaurant_slug = self.request.query_params.get('restaurant_slug')
-        status = self.request.query_params.get('status')
-
-        if restaurant_id:
-            queryset = queryset.filter(restaurant_id=restaurant_id)
-        if restaurant_slug:
-            queryset = queryset.filter(restaurant__slug=restaurant_slug)
-        if status:
-            statuses = [s.strip() for s in status.split(",") if s.strip()]
+        queryset = (
+            Order.objects.filter(restaurant=self.request.user.restaurant)
+            .select_related("restaurant", "table")
+            .prefetch_related("items", "items__dish")
+        )
+        status_param = self.request.query_params.get("status")
+        if status_param:
+            statuses = [s.strip() for s in status_param.split(",") if s.strip()]
             queryset = queryset.filter(status__in=statuses)
-
         return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(restaurant=self.request.user.restaurant)

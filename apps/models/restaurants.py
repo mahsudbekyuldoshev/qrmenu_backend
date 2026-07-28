@@ -1,7 +1,20 @@
 import uuid
 
-from django.db.models import CharField, SlugField, BooleanField, DateTimeField, ForeignKey, SET_NULL, CASCADE, Model, \
-    TextField, IntegerField, DecimalField, ImageField
+from django.conf import settings
+from django.db.models import (
+    CASCADE,
+    SET_NULL,
+    BooleanField,
+    CharField,
+    DateTimeField,
+    DecimalField,
+    ForeignKey,
+    ImageField,
+    IntegerField,
+    Model,
+    SlugField,
+    TextField,
+)
 
 
 class Restaurant(Model):
@@ -9,12 +22,15 @@ class Restaurant(Model):
     Restoran modeli.
     Tizimda har bir restoranning o'zining alohida sozlamalari, menyusi va stollari bo'ladi (SaaS modeli).
     """
+
     name = CharField(max_length=255, verbose_name="Restoran nomi")
     slug = SlugField(max_length=255, unique=True, verbose_name="Slug (URL uchun)")
     is_active = BooleanField(default=True, verbose_name="Aktivlik statusi")
-    subscription_end_date = DateTimeField(verbose_name="Obuna tugash vaqti", null=True, blank=True)
+    subscription_end_date = DateTimeField(
+        verbose_name="Obuna tugash vaqti", null=True, blank=True
+    )
     owner = ForeignKey(
-        "auth.User",
+        settings.AUTH_USER_MODEL,  # TUZATISH: "auth.User" o'rniga - endi custom User (apps.User)
         SET_NULL,
         null=True,
         blank=True,
@@ -39,11 +55,9 @@ class Table(Model):
     Stol modeli.
     Restorandagi stollar raqami yoki nomi va QR-kod uchun maxsus xavfsiz hashni saqlaydi.
     """
+
     restaurant = ForeignKey(
-        Restaurant,
-        CASCADE,
-        related_name="tables",
-        verbose_name="Restoran"
+        Restaurant, CASCADE, related_name="tables", verbose_name="Restoran"
     )
     number = CharField(max_length=50, verbose_name="Stol raqami/nomi")
     qr_hash = CharField("QR kod uchun hash", max_length=64, unique=True, blank=True)
@@ -55,11 +69,10 @@ class Table(Model):
     class Meta:
         verbose_name = "Stol"
         verbose_name_plural = "Stollar"
-        unique_together = ("restaurant", "number")  # Bitta restoranda bir xil raqamli stol bo'lishi mumkin emas
+        unique_together = ("restaurant", "number")
         ordering = ["number"]
 
     def save(self, *args, **kwargs):
-        # Stol yaratilayotganda qr_hash avtomatik ravishda UUID4 orqali generatsiya qilinadi
         if not self.qr_hash:
             self.qr_hash = uuid.uuid4().hex
         super().save(*args, **kwargs)
@@ -71,13 +84,10 @@ class Table(Model):
 class Category(Model):
     """
     Kategoriya modeli.
-    Taomlar guruhlarini boshqarish uchun (masalan: Suyuq taomlar, Salatlar, Ichimliklar).
     """
+
     restaurant = ForeignKey(
-        Restaurant,
-        CASCADE,
-        related_name="categories",
-        verbose_name="Restoran"
+        Restaurant, CASCADE, related_name="categories", verbose_name="Restoran"
     )
     name = CharField(max_length=255, verbose_name="Kategoriya nomi")
     slug = SlugField(max_length=255, verbose_name="Slug (URL uchun)")
@@ -100,15 +110,11 @@ class Category(Model):
 
 class Dish(Model):
     """
-    Taom modeli.
-    Kategoriyaga tegishli bo'lgan taomlar haqida ma'lumotlarni saqlaydi.
-    `is_available` maydoni stop-list vazifasini bajaradi (taom hozirda bormi yoki yo'qligini bildiradi).
+    Taom modeli. `is_available` — stop-list vazifasini bajaradi.
     """
+
     category = ForeignKey(
-        Category,
-        CASCADE,
-        related_name="dishes",
-        verbose_name="Kategoriya"
+        Category, CASCADE, related_name="dishes", verbose_name="Kategoriya"
     )
     name = CharField("Taom nomi", max_length=255)
     description = TextField("Taom tavsifi", blank=True, null=True)

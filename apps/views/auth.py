@@ -1,8 +1,10 @@
-from django.contrib.auth.models import User
-from rest_framework import generics, permissions, status
+from rest_framework import status
+from rest_framework.generics import CreateAPIView, GenericAPIView
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from apps.models import User
 from apps.serializers.auth import (
     RegisterSerializer,
     RestoFlowTokenObtainPairSerializer,
@@ -10,17 +12,16 @@ from apps.serializers.auth import (
 )
 
 
-class RegisterView(generics.CreateAPIView):
+class RegisterView(CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = AllowAny
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        # Issue tokens immediately after register
         refresh = RestoFlowTokenObtainPairSerializer.get_token(user)
         return Response(
             {
@@ -34,11 +35,11 @@ class RegisterView(generics.CreateAPIView):
 
 class LoginView(TokenObtainPairView):
     serializer_class = RestoFlowTokenObtainPairSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = AllowAny
 
 
-class MeView(generics.GenericAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+class MeView(GenericAPIView):
+    permission_classes = IsAuthenticated
     serializer_class = UserSerializer
 
     def get(self, request):
