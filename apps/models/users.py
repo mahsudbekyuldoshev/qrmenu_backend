@@ -7,22 +7,35 @@ from apps.models.manager.user_manager import UserManager
 class User(AbstractUser):
     """
     Custom foydalanuvchi modeli.
-
-    Nega kerak edi:
-    - Standart Django User'da `role` (direktor/ofitsiant/oshpaz) va foydalanuvchi qaysi
-      restoranga tegishli ekanini bildiradigan to'g'ridan-to'g'ri FK yo'q edi.
-    - Avval faqat Restaurant.owner orqali BITTA direktor bog'lanardi — ofitsiant/oshpaz
-      uchun umuman akkaunt yaratib bo'lmasdi.
-    - Email orqali kirish uchun username=email "hiylasi" endi kerak emas.
+    Frontend yangilanishiga mos o'zgarishlar:
+    - Endi telefon raqam asosiy identifikator (email emas). Login/register
+      +998 XX XXX XX XX formatidagi telefon raqam orqali amalga oshadi.
+    - "Direktor" (owner) roli endi oddiy /register orqali yaratilmaydi -
+      role nomi `manager`ga o'zgartirildi va faqat Super Admin panel orqali
+      biriktiriladi (restoranga manager tayinlash).
+    - Yangi `super_admin` roli qo'shildi - platformani boshqaruvchi (restoranlar,
+      obunalar, manager hisoblarini yaratish) uchun. Bu foydalanuvchi hech qanday
+      restaurant'ga bog'lanmaydi (restaurant=None).
+    - `chef` (oshpaz) endi menyuni faqat ko'radi - tahrirlash huquqi frontendda
+      olib tashlandi (backend darajasida ham permission tekshiruvi kerak,
+      views.py/permissions.py qatlamida cheklanadi).
     """
 
     class Role(models.TextChoices):
-        OWNER = "owner", "Direktor"
+        SUPER_ADMIN = "super_admin", "Super Admin"
+        MANAGER = "manager", "Menejer"  # avvalgi "owner"/"Direktor"
         WAITER = "waiter", "Ofitsiant"
         CHEF = "chef", "Oshpaz"
 
-    username = None  # email asosiy identifikator bo'lgani uchun kerak emas
-    email = models.EmailField("Email", unique=True)
+    username = None  # endi kerak emas
+    email = models.EmailField("Email", blank=True, null=True)
+
+    phone = models.CharField(
+        "Telefon raqam",
+        max_length=20,
+        unique=True,
+        help_text="Format: +998XXXXXXXXX",
+    )
 
     restaurant = models.ForeignKey(
         "apps.Restaurant",
@@ -31,15 +44,20 @@ class User(AbstractUser):
         null=True,
         blank=True,
         verbose_name="Ishlaydigan restorani",
+        help_text="Super Admin uchun bo'sh qoldiriladi.",
     )
     role = models.CharField(
-        max_length=20, choices=Role.choices, default=Role.OWNER, verbose_name="Roli"
+        max_length=20, choices=Role.choices, default=Role.MANAGER, verbose_name="Roli"
     )
 
-    USERNAME_FIELD = "email"
+    USERNAME_FIELD = "phone"
     REQUIRED_FIELDS = []
 
     objects = UserManager()
 
+    class Meta:
+        verbose_name = "Foydalanuvchi"
+        verbose_name_plural = "Foydalanuvchilar"
+
     def __str__(self):
-        return self.email
+        return f"{self.phone} ({self.get_role_display()})"

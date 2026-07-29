@@ -1,12 +1,12 @@
-from rest_framework import permissions, viewsets
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.viewsets import ModelViewSet
 
 from apps.models.orders import Order
 from apps.permission import IsRestaurantStaff
 from apps.serializers.orders import OrderSerializer
 
 
-class OrderViewSet(viewsets.ModelViewSet):
+class OrderViewSet(ModelViewSet):
     """
     Buyurtmalar — direktor, ofitsiant VA oshpaz uchun ham ochiq (IsRestaurantStaff),
     chunki KDS (oshpaz) va Waiter (ofitsiant) ekranlari ham shu API orqali statusni

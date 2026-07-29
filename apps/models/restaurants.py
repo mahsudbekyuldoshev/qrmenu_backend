@@ -29,13 +29,21 @@ class Restaurant(Model):
     subscription_end_date = DateTimeField(
         verbose_name="Obuna tugash vaqti", null=True, blank=True
     )
+    menu_background = ImageField(
+        "Menyu fon rasmi",
+        upload_to="restaurant_backgrounds/",
+        blank=True,
+        null=True,
+        help_text="Mijoz QR-menyu sahifasining fon rasmi (Manager panel orqali o'zgartiriladi).",
+    )
     owner = ForeignKey(
-        settings.AUTH_USER_MODEL,  # TUZATISH: "auth.User" o'rniga - endi custom User (apps.User)
+        settings.AUTH_USER_MODEL,  # endi custom User (apps.User), role="manager" bo'lishi kerak
         SET_NULL,
         null=True,
         blank=True,
         related_name="owned_restaurants",
-        verbose_name="Egasi",
+        verbose_name="Menejeri",
+        help_text="Restoranga biriktirilgan menejer (Super Admin panel orqali tayinlanadi).",
     )
 
     created_at = DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqt")
