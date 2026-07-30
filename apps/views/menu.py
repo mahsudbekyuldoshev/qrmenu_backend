@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 
 from apps.models.orders import Order, OrderItem
 from apps.models.restaurants import Category, Dish, Table
-from apps.serializers.menu import PublicCategorySerializer
+from apps.serializers.menu import PublicCategorySerializer, PublicRestaurantSerializer
 
 
 class PublicMenuView(APIView):
@@ -13,8 +13,12 @@ class PublicMenuView(APIView):
     Mijoz uchun ochiq menyu. Auth kerak emas — faqat stol QR-hash orqali kiriladi.
     Bu APIView bo'lishi kerak, ViewSet emas: bu yerda faqat bitta GET amali bor
     (menyuni ko'rish), na list, na create, na delete kerak emas.
+
+    TUZATISH: javobga `restaurant`ni to'liq (menu_background bilan) qo'shdik —
+    frontend endi mijoz menyu sahifasida Manager tomonidan yuklangan fon rasmini
+    shu javobdan oladi. Mijoz bu maydonni faqat o'qiydi, o'zgartira olmaydi.
     """
-    permission_classes = AllowAny
+    permission_classes = (AllowAny,)
 
     def get(self, request, qr_hash):
         table = get_object_or_404(Table, qr_hash=qr_hash, is_active=True)
@@ -24,6 +28,9 @@ class PublicMenuView(APIView):
 
         return Response(
             {
+                "restaurant": PublicRestaurantSerializer(
+                    table.restaurant, context={"request": request}
+                ).data,
                 "restaurant_name": table.restaurant.name,
                 "table_number": table.number,
                 "categories": PublicCategorySerializer(categories, many=True).data,
@@ -39,7 +46,7 @@ class PublicOrderCreateView(APIView):
     buyurtmasini ko'ra olmaydi/o'zgartira olmaydi (bu xodimning OrderViewSet ishi).
     """
 
-    permission_classes = AllowAny
+    permission_classes = (AllowAny,)
 
     def post(self, request, qr_hash):
         table = get_object_or_404(Table, qr_hash=qr_hash, is_active=True)

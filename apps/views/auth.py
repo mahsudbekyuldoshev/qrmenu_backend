@@ -13,9 +13,15 @@ from apps.serializers.auth import (
 
 
 class RegisterView(CreateAPIView):
+    """
+    Faqat Ofitsiant/Oshpaz shu orqali ro'yxatdan o'tadi (RegisterSerializer'da
+    role WAITER/CHEF bilan cheklangan). Manager/Super Admin hisoblari bu yerdan
+    yaratilmaydi — ular Super Admin panel orqali yaratiladi (qarang: admin.py).
+    """
+
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
-    permission_classes = AllowAny
+    permission_classes = (AllowAny,)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -34,12 +40,14 @@ class RegisterView(CreateAPIView):
 
 
 class LoginView(TokenObtainPairView):
+    """Telefon raqam + parol orqali login (RestoFlowTokenObtainPairSerializer)."""
+
     serializer_class = RestoFlowTokenObtainPairSerializer
-    permission_classes = AllowAny
+    permission_classes = (AllowAny,)
 
 
 class MeView(GenericAPIView):
-    permission_classes = IsAuthenticated
+    permission_classes = (IsAuthenticated,)
     serializer_class = UserSerializer
 
     def get(self, request):

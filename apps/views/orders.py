@@ -8,9 +8,9 @@ from apps.serializers.orders import OrderSerializer
 
 class OrderViewSet(ModelViewSet):
     """
-    Buyurtmalar — direktor, ofitsiant VA oshpaz uchun ham ochiq (IsRestaurantStaff),
+    Buyurtmalar — manager, ofitsiant VA oshpaz uchun ham ochiq (IsRestaurantStaff),
     chunki KDS (oshpaz) va Waiter (ofitsiant) ekranlari ham shu API orqali statusni
-    o'zgartiradi. Faqat direktorga cheklab qo'yish noto'g'ri bo'lardi.
+    o'zgartiradi. Faqat managerga cheklab qo'yish noto'g'ri bo'lardi.
     """
 
     serializer_class = OrderSerializer

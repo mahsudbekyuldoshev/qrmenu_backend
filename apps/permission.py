@@ -1,30 +1,53 @@
-from rest_framework import permissions
+from rest_framework.permissions import BasePermission
 
 
-class IsRestaurantStaff(permissions.BasePermission):
+class IsRestaurantStaff(BasePermission):
     """
-    Foydalanuvchi biror restoranga xodim sifatida biriktirilganini tekshiradi
-    (direktor, ofitsiant yoki oshpaz — barchasi uchun ishlaydi).
-    Masalan OrderViewSet uchun mos: buyurtma statusini har uchala rol ham o'zgartiradi.
+    Foydalanuvchi biror restoranga biriktirilgan xodim bo'lsa ruxsat beradi
+    (manager, waiter yoki chef — rolidan qat'i nazar). Super Admin bu yerga
+    kirmaydi, chunki u hech qanday restoranga bog'lanmagan (restaurant=None).
     """
 
     def has_permission(self, request, view):
+        user = request.user
         return bool(
-            request.user
-            and request.user.is_authenticated
-            and request.user.restaurant_id
+            user
+            and user.is_authenticated
+            and user.restaurant_id is not None
         )
 
-    def has_object_permission(self, request, view, obj):
-        restaurant = getattr(obj, "restaurant", obj)
-        return request.user.restaurant_id == restaurant.id
 
-
-class IsRestaurantOwner(IsRestaurantStaff):
+class IsRestaurantManager(BasePermission):
     """
-    Faqat restoran DIREKTORI uchun — menyu, stol, restoran sozlamalarini
-    boshqarish kabi amallar uchun (ofitsiant/oshpaz bularga kira olmasligi kerak).
+    TUZATISH: avvalgi `IsRestaurantOwner`ning o'rnini bosadi — role nomi
+    "owner" dan "manager"ga o'zgargani uchun.
+
+    Faqat role="manager" bo'lgan va restoranga biriktirilgan foydalanuvchiga
+    yozish (menyu tahrirlash, stol qo'shish, fon rasm o'zgartirish va h.k.)
+    huquqini beradi.
     """
 
     def has_permission(self, request, view):
-        return super().has_permission(request, view) and request.user.role == request.user.Role.OWNER
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and user.restaurant_id is not None
+            and user.role == "manager"
+        )
+
+
+class IsSuperAdmin(BasePermission):
+    """
+    Faqat role="super_admin" bo'lgan foydalanuvchiga ruxsat beradi.
+    Super Admin panel (restoranlar ro'yxati, obunalar, manager biriktirish)
+    shu permission bilan himoyalanadi.
+    """
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and user.role == "super_admin"
+        )

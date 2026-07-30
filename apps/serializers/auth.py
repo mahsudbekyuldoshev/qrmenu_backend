@@ -1,14 +1,14 @@
 from typing import Optional
 
-from django.utils.text import slugify
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework.exceptions import ValidationError
-from rest_framework.fields import CharField, EmailField, SerializerMethodField
+from rest_framework.fields import CharField, ChoiceField, SerializerMethodField
 from rest_framework.serializers import ModelSerializer, Serializer
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from apps.models import Restaurant, User
+from apps.models import User
+from apps.models.manager.user_manager import UserManager
 
 
 class UserSerializer(ModelSerializer):
@@ -20,7 +20,7 @@ class UserSerializer(ModelSerializer):
         model = User
         fields = (
             "id",
-            "email",
+            "phone",
             "first_name",
             "last_name",
             "role",
@@ -28,10 +28,6 @@ class UserSerializer(ModelSerializer):
             "restaurant_slug",
             "restaurant_name",
         )
-
-    # TUZATISH: avval `obj.owned_restaurants.order_by("id").first()` orqali (teskari FK
-    # qidiruv, faqat direktorga ishlagan) topilardi. Endi User.restaurant to'g'ridan-to'g'ri
-    # FK bo'lgani uchun oddiy va HAR QANDAY rol (direktor/ofitsiant/oshpaz) uchun ishlaydi.
 
     @extend_schema_field(OpenApiTypes.INT)
     def get_restaurant_id(self, obj: User) -> Optional[int]:
@@ -48,72 +44,59 @@ class UserSerializer(ModelSerializer):
 
 class RegisterSerializer(Serializer):
     """
-    Faqat DIREKTOR shu orqali ro'yxatdan o'tadi (o'zi bilan birga yangi restoran yaratadi).
-    Ofitsiant/oshpaz akkauntlari alohida — direktor ularni keyinchalik
-    (masalan InviteStaffView orqali, hozircha yozilmagan) qo'shadi.
+    Oddiy /register orqali FAQAT xodimlar (Ofitsiant/Oshpaz) ro'yxatdan o'tadi.
+
+    TUZATISH: avval bu yerda direktor o'zi bilan birga yangi restoran yaratardi
+    (restaurant_name maydoni orqali). Endi frontendda "Direktor" roli register
+    formasidan olib tashlandi — menejer (avvalgi "direktor") hisobini faqat
+    Super Admin panel orqali restoranga biriktirib yaratadi.
+
+    Shu sabab bu yerda `restaurant_name` maydoni yo'q va `role` faqat
+    waiter/chef qiymatlarini qabul qiladi — xodim keyinchalik menejer/super
+    admin tomonidan biror restoranga (`user.restaurant`) biriktiriladi.
     """
 
-    email = EmailField()
+    phone = CharField(max_length=20)
     password = CharField(min_length=8, write_only=True)
     full_name = CharField(max_length=150, required=False, allow_blank=True)
-    restaurant_name = CharField(max_length=255)
+    role = ChoiceField(choices=[User.Role.WAITER, User.Role.CHEF])
 
-    def validate_email(self, value):
-        email = value.lower().strip()
-        if User.objects.filter(email=email).exists():
-            raise ValidationError("Bu email allaqachon roʻyxatdan oʻtgan.")
-        return email
+    def validate_phone(self, value):
+        phone = UserManager.normalize_phone(value)
+        if User.objects.filter(phone=phone).exists():
+            raise ValidationError("Bu telefon raqam allaqachon roʻyxatdan oʻtgan.")
+        return phone
 
     def create(self, validated_data):
-        email = validated_data["email"]
+        phone = validated_data["phone"]
         full_name = validated_data.get("full_name", "").strip()
-        restaurant_name = validated_data["restaurant_name"].strip()
 
         first_name = full_name
         last_name = ""
         if " " in full_name:
             first_name, last_name = full_name.split(" ", 1)
 
-        # TUZATISH: endi `username=email` hiylasi kerak emas — custom User modelida
-        # email o'zi USERNAME_FIELD.
         user = User.objects.create_user(
-            email=email,
+            phone=phone,
             password=validated_data["password"],
             first_name=first_name,
             last_name=last_name,
-            role=User.Role.OWNER,
+            role=validated_data["role"],
         )
-
-        base_slug = slugify(restaurant_name) or "restaurant"
-        slug = base_slug
-        i = 1
-        while Restaurant.objects.filter(slug=slug).exists():
-            slug = f"{base_slug}-{i}"
-            i += 1
-
-        restaurant = Restaurant.objects.create(
-            name=restaurant_name,
-            slug=slug,
-            owner=user,
-            is_active=True,
-        )
-        user.restaurant = restaurant
-        user.save(update_fields=["restaurant"])
+        # Restaurant hali biriktirilmagan — menejer/super admin keyin tayinlaydi.
         return user
 
 
 class RestoFlowTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
-    TUZATISH: avval `__init__`da `username` maydonini ixtiyoriy qilib, `email` maydonini
-    qo'lda qo'shish kerak edi (chunki standart User'da USERNAME_FIELD='username' edi).
-    Endi custom User'da USERNAME_FIELD='email' bo'lgani uchun DRF SimpleJWT o'zi avtomatik
-    'email' maydonini yaratadi — hech qanday qo'shimcha hiyla kerak emas.
+    TUZATISH: endi custom User'da USERNAME_FIELD='phone' bo'lgani uchun DRF SimpleJWT
+    o'zi avtomatik 'phone' maydonini login uchun ishlatadi (email/username emas).
     """
 
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        token["email"] = user.email
+        token["phone"] = user.phone
         token["role"] = user.role
         if user.restaurant_id:
             token["restaurant_id"] = user.restaurant_id

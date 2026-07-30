@@ -1,7 +1,20 @@
 from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ModelSerializer
 
-from apps.models.restaurants import Category, Dish
+from apps.models.restaurants import Category, Dish, Restaurant
+
+
+class PublicRestaurantSerializer(ModelSerializer):
+    """
+    Mijoz uchun ochiq (auth talab qilmaydigan) restoran ma'lumoti.
+    Frontend `/menu/:id` sahifasida shu orqali `menu_background` rasmini oladi —
+    bu maydonni faqat Manager (RestaurantSerializer orqali) o'zgartira oladi,
+    mijoz esa bu yerda faqat o'qish (read-only) huquqiga ega.
+    """
+
+    class Meta:
+        model = Restaurant
+        fields = "id", "name", "slug", "menu_background"
 
 
 class PublicDishSerializer(ModelSerializer):

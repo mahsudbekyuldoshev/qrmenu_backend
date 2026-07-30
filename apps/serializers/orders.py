@@ -63,9 +63,12 @@ class OrderSerializer(ModelSerializer):
         return value
 
     def validate_table(self, value):
-        # TUZATISH: stol boshqa restoranga tegishli bo'lmasligini tekshiradi.
+        # TUZATISH: avval `value.restaurant.owner_id != request.user.id` orqali
+        # tekshirilardi — bu faqat "direktor" (owner) uchun ishlagan. Endi manager,
+        # waiter va boshqa xodimlar ham `user.restaurant` orqali bog'langani uchun
+        # tekshiruv `restaurant_id` asosida qilinadi — barcha rollar uchun ishlaydi.
         request = self.context.get("request")
-        if request and value and value.restaurant.owner_id != request.user.id:
+        if request and value and value.restaurant_id != request.user.restaurant_id:
             raise ValidationError("Bu stol sizning restoraningizga tegishli emas.")
         return value
 
