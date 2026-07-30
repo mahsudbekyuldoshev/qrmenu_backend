@@ -8,14 +8,6 @@ RestoFlow backend tizimi — restoranlar uchun QR-menyu, KDS (Kitchen Display Sy
 *   **Containerization:** Docker, Docker Compose
 *   **Real-time:** WebSockets
 
-## O'rnatish va Ishga tushirish
-
-1. **Loyihani klonlash:**
-   ```bash
-   git clone <repo-url>
-   cd qrmenu_backend
-   ```
-
 2. **Muhit o'zgaruvchilari:**
    `.env.example` faylidan `.env` faylini yarating va PostgreSQL ma'lumotlari hamda boshqa konfiguratsiyalarni kiriting.
 
