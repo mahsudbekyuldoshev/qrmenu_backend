@@ -15,43 +15,16 @@
 - [x] **Tests**: Asosiy API endpointlar uchun unit testlar yozish.
 - [x] **Dokumentatsiya**: API uchun Swagger/OpenAPI (`drf-spectacular`) sozlash.
 - [x] **Refactoring (Paketlarga bo'lish)**: `models`, `serializers`, `views` paketlari yaratildi.
-- [x] **Refactoring (Apps birlashtirish)**: `accounts` va `orders` ilovalari `apps/` paketi ichiga ko'chirildi.
 
-## 🚧 Kelgusi rejalar
-- [ ] **Migratsiyalarni to'g'irlash**: `apps/` paketi o'zgarishi munosabati bilan buzilgan migratsiya fayllarini qayta sozlash va bazani yangilash.
-- [ ] **Deployment**: Docker va Nginx konfiguratsiyasini yaratish, ishlab chiqarish muhitiga tayyorlash.
-- [ ] **Kengaytirilgan Testlar**: Refactoringdan so'ng, tizimning barcha qismlarini (Auth, Orders, Restaurants) to'liq unit va integratsiya testlaridan o'tkazish.
-- [ ] **Kod Sifati**: Linting va kodni tozalash (masalan, `flake8`, `black` yordamida).
-- [ ] **Performance**: Ma'lumotlar bazasi so'rovlarini optimallashtirish (indeksatsiya, queryset'larni yaxshilash).
-
-
-
-
-▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
- > git-pip.py nima file nimalar qiladi
-▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-
-  'get-pip.py' faylini tushuntirish: 'get-pip.py' faylini tushuntirish va uning vazifasini aniqlashtirish.
+## 🚀 Kelgusi rejalar (To-do)
+- [x] +++ **Logging**: `LOGGING` konfiguratsiyasini `settings.py` da sozlash.
+- [x] +++ **Monitoring**: Sentry yoki boshqa xatolarni kuzatish tizimini ulash.
+- [x] +++ **Performance**: Redis cache integratsiyasi (`django-redis`).
+- [x] +++ **Security**: `ALLOWED_HOSTS` ni production uchun chegaralash va security middleware ni tekshirish.
+- [ ] **Testing**: Test qamrovini (coverage) oshirish (integratsion testlar).
+- [ ] **CI/CD**: GitHub Actions orqali avtomatlashtirilgan test va deploy pipeline yaratish.
+- [ ] **Database**: Modellarda indekslarni (indexes) tekshirish va optimallashtirish.
+- [ ] **Doc/API**: API dokumentatsiyani yanada boyitish (yozma qo'llanmalar).
 
 
-✦ get-pip.py (sizda get-pip.py nomi bilan turibdi) bu — pip paket boshqaruvchisini (Python kutubxonalarini o'rnatadigan vosita) o'rnatish uchun Python jamiyati tomonidan taqdim etilgan rasmiy bootstrap skriptidir.
-
-  U nima qiladi?
-
-   1. pip'ni o'rnatadi: Agar Python muhitingizda pip umuman bo'lmasa yoki eskirgan bo'lsa, ushbu skript pip, setuptools va wheel paketlarining eng so'nggi versiyalarini avtomatik ravishda yuklab olib, o'rnatadi.
-   2. Muhitni sozlaydi: U Python site-packages papkasini tekshiradi va pip to'g'ri ishlashi uchun kerakli barcha fayllarni joylashtiradi.
-
-  Nima uchun sizning loyihangizda bor?
-
-   * Docker/Deployment: Ko'pincha loyihani serverga yoki Docker konteynerga o'rnatishda (ayniqsa, agar asosiy Python tasvirida pip bo'lmasa), get-pip.py ishlatiladi.
-   * Virtual muhit: Ba'zida yangi .venv yaratganda pip to'liq o'rnatilmay qolsa, uni qayta tiklash uchun ishlatiladi.
-
-  Xavfsizmi?
-  Ha, agar uni rasmiy manbadan (https://bootstrap.pypa.io/get-pip.py) yuklab olgan bo'lsangiz, u mutlaqo xavfsiz.
-
-  Tavsiya
-  Agar loyihangizda allaqachon .venv (virtual muhit) bo'lsa va unda pip ishlab turgan bo'lsa, bu faylga hozircha ehtiyoj yo'q. Uni .gitignore fayliga qo'shib qo'ysangiz ham bo'ladi, chunki u loyiha kodi emas, balki shunchaki o'rnatish
-  uchun yordamchi skriptdir.
-
-  Maslahat: Agar git orqali boshqaruv qilsangiz, loyiha uchun muhim bo'lmagan bunday skriptlarni repository'ga kiritmaslik yaxshiroq. .gitignore faylingizga get-pip.py ni ham qo'shib qo'ying.
 

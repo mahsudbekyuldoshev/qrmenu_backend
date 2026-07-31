@@ -23,12 +23,10 @@ class Restaurant(Model):
     Tizimda har bir restoranning o'zining alohida sozlamalari, menyusi va stollari bo'ladi (SaaS modeli).
     """
 
-    name = CharField(max_length=255, verbose_name="Restoran nomi")
-    slug = SlugField(max_length=255, unique=True, verbose_name="Slug (URL uchun)")
-    is_active = BooleanField(default=True, verbose_name="Aktivlik statusi")
-    subscription_end_date = DateTimeField(
-        verbose_name="Obuna tugash vaqti", null=True, blank=True
-    )
+    name = CharField("Restoran nomi", max_length=255)
+    slug = SlugField("Slug (URL uchun)", max_length=255, unique=True)
+    is_active = BooleanField("Aktivlik statusi", default=True)
+    subscription_end_date = DateTimeField("Obuna tugash vaqti", null=True, blank=True)
     menu_background = ImageField(
         "Menyu fon rasmi",
         upload_to="restaurant_backgrounds/",
@@ -37,7 +35,7 @@ class Restaurant(Model):
         help_text="Mijoz QR-menyu sahifasining fon rasmi (Manager panel orqali o'zgartiriladi).",
     )
     owner = ForeignKey(
-        settings.AUTH_USER_MODEL,  # endi custom User (apps.User), role="manager" bo'lishi kerak
+        settings.AUTH_USER_MODEL,
         SET_NULL,
         null=True,
         blank=True,
@@ -67,9 +65,9 @@ class Table(Model):
     restaurant = ForeignKey(
         Restaurant, CASCADE, related_name="tables", verbose_name="Restoran"
     )
-    number = CharField(max_length=50, verbose_name="Stol raqami/nomi")
+    number = CharField("Stol raqami/nomi", max_length=50)
     qr_hash = CharField("QR kod uchun hash", max_length=64, unique=True, blank=True)
-    is_active = BooleanField(default=True, verbose_name="Aktivlik statusi")
+    is_active = BooleanField("Aktivlik statusi", default=True)
 
     created_at = DateTimeField("Yaratilgan vaqt", auto_now_add=True)
     updated_at = DateTimeField("Tahrirlangan vaqt", auto_now=True)
@@ -95,10 +93,10 @@ class Category(Model):
     """
 
     restaurant = ForeignKey(
-        Restaurant, CASCADE, related_name="categories", verbose_name="Restoran"
+        "apps.Restaurant", CASCADE, related_name="categories", verbose_name="Restoran"
     )
-    name = CharField(max_length=255, verbose_name="Kategoriya nomi")
-    slug = SlugField(max_length=255, verbose_name="Slug (URL uchun)")
+    name = CharField("Kategoriya nomi", max_length=255)
+    slug = SlugField("Slug (URL uchun)", max_length=255)
     description = TextField(blank=True, null=True, verbose_name="Kategoriya tavsifi")
     is_active = BooleanField(default=True, verbose_name="Faollik statusi")
     ordering = IntegerField(default=0, verbose_name="Tartib raqami (Saralash uchun)")
