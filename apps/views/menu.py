@@ -18,6 +18,7 @@ class PublicMenuView(APIView):
     frontend endi mijoz menyu sahifasida Manager tomonidan yuklangan fon rasmini
     shu javobdan oladi. Mijoz bu maydonni faqat o'qiydi, o'zgartira olmaydi.
     """
+
     permission_classes = (AllowAny,)
 
     def get(self, request, qr_hash):

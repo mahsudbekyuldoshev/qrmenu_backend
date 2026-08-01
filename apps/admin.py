@@ -37,7 +37,7 @@ class CreateRestaurantWithManagerSerializer(serializers.Serializer):
         max_length=150, required=False, allow_blank=True
     )
     plan_type = serializers.ChoiceField(
-        choices=Subscription.PlanType.choices, default=Subscription.PlanType.TRIAL
+        choices=[("trial", "Trial"), ("paid", "Paid")], default="trial"
     )
     trial_days = serializers.IntegerField(default=14, min_value=1)
 
@@ -78,10 +78,10 @@ class CreateRestaurantWithManagerSerializer(serializers.Serializer):
         restaurant.owner = manager
         restaurant.save(update_fields=["owner"])
 
+        price = 0 if validated_data["plan_type"] == "trial" else 299000
         Subscription.objects.create(
             restaurant=restaurant,
-            plan_name=validated_data["plan_type"].capitalize(),
-            plan_type=validated_data["plan_type"],
+            price=price,
             is_active=True,
             end_date=timezone.now()
             + timezone.timedelta(days=validated_data["trial_days"]),
@@ -129,7 +129,7 @@ class SuperAdminRestaurantDetailView(APIView):
         sub = getattr(restaurant, "subscription_info", None)
         if sub:
             if "plan_type" in request.data:
-                sub.plan_type = request.data["plan_type"]
+                sub.price = 0 if request.data["plan_type"] == "trial" else 299000
             if "extend_days" in request.data:
                 sub.end_date = timezone.now() + timezone.timedelta(
                     days=int(request.data["extend_days"])

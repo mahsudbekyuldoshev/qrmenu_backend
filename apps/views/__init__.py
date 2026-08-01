@@ -7,3 +7,8 @@ from apps.views.restaurants import (
     MyRestaurantView,
     TableViewSet,
 )
+from apps.views.super_admin import (
+    AdminDashboardView,
+    DirectorViewSet,
+    RestaurantAdminViewSet,
+)

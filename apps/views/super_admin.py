@@ -1,0 +1,158 @@
+from rest_framework import status
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
+
+from apps.models.restaurants import Restaurant
+from apps.models.users import User
+from apps.permission import IsSuperAdmin
+from apps.serializers.super_admin import (
+    AdminDashboardSerializer,
+    AssignDirectorSerializer,
+    DirectorCreateSerializer,
+    DirectorSerializer,
+    PaymentSerializer,
+    RenewSubscriptionSerializer,
+    RestaurantAdminCreateSerializer,
+    RestaurantAdminDetailSerializer,
+)
+
+
+class DirectorViewSet(ModelViewSet):
+    """
+    Super Admin - direktor hisoblarini yaratadi/ko'radi/tahrirlaydi/o'chiradi.
+    Yaratishda `DirectorCreateSerializer` (parol bilan), boshqa amallarda
+    `DirectorSerializer` (parolsiz) ishlatiladi.
+    """
+
+    permission_classes = (IsAuthenticated, IsSuperAdmin)
+    queryset = User.objects.filter(role=User.Role.DIRECTOR).select_related("restaurant")
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return DirectorCreateSerializer
+        return DirectorSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        director = serializer.save()
+        return Response(
+            DirectorSerializer(director).data, status=status.HTTP_201_CREATED
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        director = self.get_object()
+        restaurant = director.restaurant
+        # Direktor o'chirilsa, restoran "egasiz" qolmasin - owner bog'lanishini tozalaymiz.
+        if restaurant and restaurant.owner_id == director.id:
+            restaurant.owner = None
+            restaurant.save(update_fields=["owner"])
+        return super().destroy(request, *args, **kwargs)
+
+
+class RestaurantAdminViewSet(ModelViewSet):
+    """
+    Super Admin - restoranlarni yaratadi/ko'radi/tahrirlaydi/o'chiradi,
+    direktor biriktiradi, obunani uzaytiradi.
+    """
+
+    permission_classes = (IsAuthenticated, IsSuperAdmin)
+    queryset = Restaurant.objects.select_related(
+        "owner", "subscription_info"
+    ).prefetch_related("staff")
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return RestaurantAdminCreateSerializer
+        return RestaurantAdminDetailSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        restaurant = serializer.save()
+        return Response(
+            RestaurantAdminDetailSerializer(restaurant).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["post"], url_path="assign-director")
+    def assign_director(self, request, pk=None):
+        """POST /admin/restaurants/{id}/assign-director/  body: {"director_id": N}"""
+        restaurant = self.get_object()
+        serializer = AssignDirectorSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(restaurant=restaurant)
+        return Response(RestaurantAdminDetailSerializer(restaurant).data)
+
+    @action(detail=True, methods=["post"], url_path="renew-subscription")
+    def renew_subscription(self, request, pk=None):
+        """
+        POST /admin/restaurants/{id}/renew-subscription/
+        body: {"amount": 299000, "months": 1, "note": "Naqd to'lov"}
+        Har chaqiriqda `Payment` yozuvi yaratiladi va obuna muddati uzayadi.
+        """
+        restaurant = self.get_object()
+        subscription = getattr(restaurant, "subscription_info", None)
+        if subscription is None:
+            return Response(
+                {"detail": "Bu restoranda obuna topilmadi."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = RenewSubscriptionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payment = serializer.save(subscription=subscription)
+
+        return Response(
+            {
+                "restaurant": RestaurantAdminDetailSerializer(restaurant).data,
+                "payment": PaymentSerializer(payment).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["get"], url_path="payments")
+    def payments(self, request, pk=None):
+        """GET /admin/restaurants/{id}/payments/ - to'lovlar tarixi."""
+        restaurant = self.get_object()
+        subscription = getattr(restaurant, "subscription_info", None)
+        if subscription is None:
+            return Response([])
+        return Response(PaymentSerializer(subscription.payments.all(), many=True).data)
+
+
+class AdminDashboardView(APIView):
+    """
+    GET /admin/dashboard/
+    Super Admin bosh sahifasi: jami restoranlar/direktorlar soni, har bir
+    restoran uchun obuna holati, to'langan summa va xodimlar soni.
+    """
+
+    permission_classes = (IsAuthenticated, IsSuperAdmin)
+
+    def get(self, request):
+        restaurants = Restaurant.objects.select_related(
+            "owner", "subscription_info"
+        ).prefetch_related("staff")
+
+        total_restaurants = restaurants.count()
+        total_directors = User.objects.filter(role=User.Role.DIRECTOR).count()
+
+        active_subscriptions = sum(
+            1
+            for r in restaurants
+            if getattr(r, "subscription_info", None) and r.subscription_info.has_access
+        )
+        expired_subscriptions = total_restaurants - active_subscriptions
+
+        data = {
+            "total_restaurants": total_restaurants,
+            "total_directors": total_directors,
+            "active_subscriptions": active_subscriptions,
+            "expired_subscriptions": expired_subscriptions,
+            "restaurants": restaurants,
+        }
+        return Response(AdminDashboardSerializer(data).data)

@@ -15,24 +15,28 @@ from django.db.models import (
     SlugField,
     TextField,
 )
+from django.utils.translation import gettext_lazy as _
 
 
 class Restaurant(Model):
     """
     Restoran modeli.
-    Tizimda har bir restoranning o'zining alohida sozlamalari, menyusi va stollari bo'ladi (SaaS modeli).
+    Tizimda har bir restoranning o'zining alohida sozlamalari, menyusi va
+    stollari bo'ladi (SaaS modeli). Restoranning platformadan foydalanish
+    huquqi `subscription_info` (Subscription) orqali aniqlanadi.
     """
 
-    name = CharField("Restoran nomi", max_length=255)
-    slug = SlugField("Slug (URL uchun)", max_length=255, unique=True)
-    is_active = BooleanField("Aktivlik statusi", default=True)
-    subscription_end_date = DateTimeField("Obuna tugash vaqti", null=True, blank=True)
+    name = CharField(_("Restoran nomi"), max_length=255)
+    slug = SlugField(_("Slug (URL uchun)"), max_length=255, unique=True)
+    is_active = BooleanField(_("Aktivlik statusi"), default=True)
     menu_background = ImageField(
-        "Menyu fon rasmi",
+        _("Menyu fon rasmi"),
         upload_to="restaurant_backgrounds/",
         blank=True,
         null=True,
-        help_text="Mijoz QR-menyu sahifasining fon rasmi (Manager panel orqali o'zgartiriladi).",
+        help_text=_(
+            "Mijoz QR-menyu sahifasining fon rasmi (Manager panel orqali o'zgartiriladi)."
+        ),
     )
     owner = ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -40,16 +44,19 @@ class Restaurant(Model):
         null=True,
         blank=True,
         related_name="owned_restaurants",
-        verbose_name="Menejeri",
-        help_text="Restoranga biriktirilgan menejer (Super Admin panel orqali tayinlanadi).",
+        verbose_name=_("Direktori"),
+        help_text=_(
+            "Restoranga biriktirilgan direktor (role=director), "
+            "Super Admin panel orqali tayinlanadi."
+        ),
     )
 
-    created_at = DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqt")
-    updated_at = DateTimeField(auto_now=True, verbose_name="Tahrirlangan vaqt")
+    created_at = DateTimeField(_("Yaratilgan vaqt"), auto_now_add=True)
+    updated_at = DateTimeField(_("Tahrirlangan vaqt"), auto_now=True)
 
     class Meta:
-        verbose_name = "Restoran"
-        verbose_name_plural = "Restoranlar"
+        verbose_name = _("Restoran")
+        verbose_name_plural = _("Restoranlar")
         ordering = ["-created_at"]
 
     def __str__(self):
@@ -63,18 +70,18 @@ class Table(Model):
     """
 
     restaurant = ForeignKey(
-        Restaurant, CASCADE, related_name="tables", verbose_name="Restoran"
+        Restaurant, CASCADE, related_name="tables", verbose_name=_("Restoran")
     )
-    number = CharField("Stol raqami/nomi", max_length=50)
-    qr_hash = CharField("QR kod uchun hash", max_length=64, unique=True, blank=True)
-    is_active = BooleanField("Aktivlik statusi", default=True)
+    number = CharField(_("Stol raqami/nomi"), max_length=50)
+    qr_hash = CharField(_("QR kod uchun hash"), max_length=64, unique=True, blank=True)
+    is_active = BooleanField(_("Aktivlik statusi"), default=True)
 
-    created_at = DateTimeField("Yaratilgan vaqt", auto_now_add=True)
-    updated_at = DateTimeField("Tahrirlangan vaqt", auto_now=True)
+    created_at = DateTimeField(_("Yaratilgan vaqt"), auto_now_add=True)
+    updated_at = DateTimeField(_("Tahrirlangan vaqt"), auto_now=True)
 
     class Meta:
-        verbose_name = "Stol"
-        verbose_name_plural = "Stollar"
+        verbose_name = _("Stol")
+        verbose_name_plural = _("Stollar")
         unique_together = ("restaurant", "number")
         ordering = ["number"]
 
@@ -93,20 +100,23 @@ class Category(Model):
     """
 
     restaurant = ForeignKey(
-        "apps.Restaurant", CASCADE, related_name="categories", verbose_name="Restoran"
+        "apps.Restaurant",
+        CASCADE,
+        related_name="categories",
+        verbose_name=_("Restoran"),
     )
-    name = CharField("Kategoriya nomi", max_length=255)
-    slug = SlugField("Slug (URL uchun)", max_length=255)
-    description = TextField(blank=True, null=True, verbose_name="Kategoriya tavsifi")
-    is_active = BooleanField(default=True, verbose_name="Faollik statusi")
-    ordering = IntegerField(default=0, verbose_name="Tartib raqami (Saralash uchun)")
+    name = CharField(_("Kategoriya nomi"), max_length=255)
+    slug = SlugField(_("Slug (URL uchun)"), max_length=255)
+    description = TextField(_("Kategoriya tavsifi"), blank=True, null=True)
+    is_active = BooleanField(_("Faollik statusi"), default=True)
+    ordering = IntegerField(_("Tartib raqami (Saralash uchun)"), default=0)
 
-    created_at = DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqt")
-    updated_at = DateTimeField(auto_now=True, verbose_name="Tahrirlangan vaqt")
+    created_at = DateTimeField(_("Yaratilgan vaqt"), auto_now_add=True)
+    updated_at = DateTimeField(_("Tahrirlangan vaqt"), auto_now=True)
 
     class Meta:
-        verbose_name = "Kategoriya"
-        verbose_name_plural = "Kategoriyalar"
+        verbose_name = _("Kategoriya")
+        verbose_name_plural = _("Kategoriyalar")
         unique_together = ("restaurant", "slug")
         ordering = ["ordering", "name"]
 
@@ -116,24 +126,24 @@ class Category(Model):
 
 class Dish(Model):
     """
-    Taom modeli. `is_available` — stop-list vazifasini bajaradi.
+    Taom modeli. `is_available` - stop-list vazifasini bajaradi.
     """
 
     category = ForeignKey(
-        Category, CASCADE, related_name="dishes", verbose_name="Kategoriya"
+        Category, CASCADE, related_name="dishes", verbose_name=_("Kategoriya")
     )
-    name = CharField("Taom nomi", max_length=255)
-    description = TextField("Taom tavsifi", blank=True, null=True)
-    price = DecimalField("Narxi", max_digits=10, decimal_places=2)
-    image = ImageField("Taom rasmi", upload_to="dishes/", blank=True, null=True)
-    is_available = BooleanField("Mavjud (Stop-list)", default=True)
+    name = CharField(_("Taom nomi"), max_length=255)
+    description = TextField(_("Taom tavsifi"), blank=True, null=True)
+    price = DecimalField(_("Narxi"), max_digits=10, decimal_places=2)
+    image = ImageField(_("Taom rasmi"), upload_to="dishes/", blank=True, null=True)
+    is_available = BooleanField(_("Mavjud (Stop-list)"), default=True)
 
-    created_at = DateTimeField("Yaratilgan vaqt", auto_now_add=True)
-    updated_at = DateTimeField("Tahrirlangan vaqt", auto_now=True)
+    created_at = DateTimeField(_("Yaratilgan vaqt"), auto_now_add=True)
+    updated_at = DateTimeField(_("Tahrirlangan vaqt"), auto_now=True)
 
     class Meta:
-        verbose_name = "Taom"
-        verbose_name_plural = "Taomlar"
+        verbose_name = _("Taom")
+        verbose_name_plural = _("Taomlar")
         ordering = ["name"]
 
     def __str__(self):

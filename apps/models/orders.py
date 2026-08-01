@@ -10,6 +10,7 @@ from django.db.models import (
     TextField,
 )
 from django.db.models.enums import TextChoices
+from django.utils.translation import gettext_lazy as _
 
 
 class Order(Model):
@@ -18,16 +19,15 @@ class Order(Model):
     Mijoz tomonidan stol orqali berilgan buyurtmalarni boshqaradi.
     """
 
-    # Buyurtma holatlari (Statuslar)
     class Status(TextChoices):
-        PENDING = "pending", "Kutilmoqda"
-        PREPARING = "preparing", "Tayyorlanmoqda"
-        READY = "ready", "Tayyor"
-        DELIVERED = "delivered", "Yetkazildi"
-        CLOSED = "closed", "Yopilgan"
+        PENDING = "pending", _("Kutilmoqda")
+        PREPARING = "preparing", _("Tayyorlanmoqda")
+        READY = "ready", _("Tayyor")
+        DELIVERED = "delivered", _("Yetkazildi")
+        CLOSED = "closed", _("Yopilgan")
 
     restaurant = ForeignKey(
-        "apps.Restaurant", CASCADE, related_name="orders", verbose_name="Restoran"
+        "apps.Restaurant", CASCADE, related_name="orders", verbose_name=_("Restoran")
     )
     table = ForeignKey(
         "apps.Table",
@@ -35,22 +35,20 @@ class Order(Model):
         null=True,
         blank=True,
         related_name="orders",
-        verbose_name="Stol",
+        verbose_name=_("Stol"),
     )
     status = CharField(
-        "Buyurtma holati", max_length=20, choices=Status.choices, default=Status.PENDING
+        _("Buyurtma holati"), max_length=20, choices=Status.choices, default=Status.PENDING
     )
-    total_price = DecimalField(
-        "Umumiy summa", max_digits=12, decimal_places=2, default=0
-    )
-    comment = TextField("Mijoz izohi", blank=True, null=True)
+    total_price = DecimalField(_("Umumiy summa"), max_digits=12, decimal_places=2, default=0)
+    comment = TextField(_("Mijoz izohi"), blank=True, null=True)
 
-    created_at = DateTimeField("Yaratilgan vaqt", auto_now_add=True)
-    updated_at = DateTimeField("Tahrirlangan vaqt", auto_now=True)
+    created_at = DateTimeField(_("Yaratilgan vaqt"), auto_now_add=True)
+    updated_at = DateTimeField(_("Tahrirlangan vaqt"), auto_now=True)
 
     class Meta:
-        verbose_name = "Buyurtma"
-        verbose_name_plural = "Buyurtmalar"
+        verbose_name = _("Buyurtma")
+        verbose_name_plural = _("Buyurtmalar")
         ordering = ["-created_at"]
 
     def __str__(self):
@@ -63,23 +61,20 @@ class OrderItem(Model):
     Har bir taomning buyurtma qilingan vaqtdagi narxi va sonini saqlaydi.
     """
 
-    order = ForeignKey(
-        "apps.Order", CASCADE, related_name="items", verbose_name="Buyurtma"
-    )
-    dish = ForeignKey("apps.Dish", SET_NULL, null=True, verbose_name="Taom")
-    quantity = PositiveIntegerField("Soni", default=1)
-    price = DecimalField("Narxi (sotuv vaqtidagi)", max_digits=10, decimal_places=2)
+    order = ForeignKey("apps.Order", CASCADE, related_name="items", verbose_name=_("Buyurtma"))
+    dish = ForeignKey("apps.Dish", SET_NULL, null=True, verbose_name=_("Taom"))
+    quantity = PositiveIntegerField(_("Soni"), default=1)
+    price = DecimalField(_("Narxi (sotuv vaqtidagi)"), max_digits=10, decimal_places=2)
 
-    created_at = DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqt")
+    created_at = DateTimeField(_("Yaratilgan vaqt"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Buyurtma taomi"
-        verbose_name_plural = "Buyurtma taomlari"
+        verbose_name = _("Buyurtma taomi")
+        verbose_name_plural = _("Buyurtma taomlari")
 
     def __str__(self):
-        return (
-            f"{self.dish.name if self.dish else "O'chirilgan taom"} x {self.quantity}"
-        )
+        dish_name = self.dish.name if self.dish else str(_("O'chirilgan taom"))
+        return f"{dish_name} x {self.quantity}"
 
     def save(self, *args, **kwargs):
         if not self.price and self.dish:

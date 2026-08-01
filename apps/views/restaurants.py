@@ -1,5 +1,6 @@
-from rest_framework import generics, viewsets
+from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.permissions import SAFE_METHODS, IsAuthenticated
 
 from apps.models.restaurants import Category, Dish, Table
@@ -12,14 +13,13 @@ from apps.serializers.restaurants import (
 )
 
 
-class MyRestaurantView(generics.RetrieveUpdateAPIView):
+class MyRestaurantView(RetrieveUpdateAPIView):
     """
-    GET: har qanday xodim (manager/ofitsiant/oshpaz) o'z restorani ma'lumotini ko'radi.
-    PATCH/PUT: FAQAT manager (role=MANAGER) tahrirlashi mumkin — masalan menu_background,
-    restoran nomi va h.k. shu orqali o'zgartiriladi.
-
-    TUZATISH: `IsRestaurantOwner` -> `IsRestaurantManager`ga o'zgartirildi, chunki
-    "owner"/Direktor roli endi "manager" deb ataladi.
+    GET: har qanday xodim (director/manager/ofitsiant/oshpaz) o'z restorani
+    ma'lumotini ko'radi.
+    PATCH/PUT: director YOKI manager tahrirlashi mumkin (`IsRestaurantManager`
+    endi ikkalasini ham qamrab oladi) - masalan menu_background, restoran nomi
+    va h.k. shu orqali o'zgartiriladi.
     """
 
     serializer_class = RestaurantSerializer
@@ -38,7 +38,7 @@ class MyRestaurantView(generics.RetrieveUpdateAPIView):
 
 
 class TableViewSet(viewsets.ModelViewSet):
-    """Faqat manager stollarni boshqaradi (yaratadi/o'chiradi)."""
+    """Director yoki manager stollarni boshqaradi (yaratadi/o'chiradi)."""
 
     serializer_class = TableSerializer
     permission_classes = (IsAuthenticated, IsRestaurantManager)
@@ -54,10 +54,10 @@ class CategoryViewSet(viewsets.ModelViewSet):
     """
     Menyu kategoriyalari.
 
-    TUZATISH: avval faqat direktor (IsRestaurantOwner) hatto KO'RA olardi — bu
-    noto'g'ri edi, chunki oshpaz KDS panelida menyuni ko'rishi kerak. Endi:
-      - GET (list/retrieve): istalgan restoran xodimi (manager/waiter/chef) ko'ra oladi.
-      - POST/PUT/PATCH/DELETE: faqat manager.
+    - GET (list/retrieve): istalgan restoran xodimi (director/manager/waiter/chef)
+      ko'ra oladi - chunki oshpaz KDS panelida, ofitsiant esa buyurtma
+      ekranida menyuni ko'rishi kerak.
+    - POST/PUT/PATCH/DELETE: faqat director yoki manager.
     """
 
     serializer_class = CategorySerializer
@@ -79,9 +79,9 @@ class DishViewSet(viewsets.ModelViewSet):
     """
     Taomlar (narx, stop-list va h.k.).
 
-    TUZATISH: xuddi CategoryViewSet kabi - oshpaz (chef) taomlarni FAQAT ko'radi
-    (KDS panelida "Menyu" bo'limi read-only bo'lishi shart edi), lekin qo'sha/
-    tahrirlay/o'chira olmaydi. Bu huquq faqat manager uchun.
+    Oshpaz (chef) taomlarni FAQAT ko'radi (KDS panelida "Menyu" bo'limi
+    read-only bo'lishi shart), lekin qo'sha/tahrirlay/o'chira olmaydi.
+    Bu huquq director va manager uchun.
     """
 
     serializer_class = DishSerializer

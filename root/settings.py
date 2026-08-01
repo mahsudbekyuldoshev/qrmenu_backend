@@ -217,3 +217,5 @@ CACHES = {
         "LOCATION": "unique-snowflake",
     }
 }
+
+AUTH_USER_MODEL = 'apps.User'

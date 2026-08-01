@@ -3,7 +3,9 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.views import (
+    AdminDashboardView,
     CategoryViewSet,
+    DirectorViewSet,
     DishViewSet,
     LoginView,
     MeView,
@@ -12,6 +14,7 @@ from apps.views import (
     PublicMenuView,
     PublicOrderCreateView,
     RegisterView,
+    RestaurantAdminViewSet,
     TableViewSet,
 )
 
@@ -20,6 +23,12 @@ router.register("tables", TableViewSet, basename="table")
 router.register("categories", CategoryViewSet, basename="category")
 router.register("dishes", DishViewSet, basename="dish")
 router.register("orders", OrderViewSet, basename="order")
+
+# --- Super Admin panel (direktor/restoran/obuna boshqaruvi) ---
+router.register("admin/directors", DirectorViewSet, basename="admin-directors")
+router.register(
+    "admin/restaurants", RestaurantAdminViewSet, basename="admin-restaurants"
+)
 
 urlpatterns = [
     # --- Auth ---
@@ -36,4 +45,6 @@ urlpatterns = [
         PublicOrderCreateView.as_view(),
         name="public-order-create",
     ),
+    # --- Super Admin bosh sahifasi (statistika) ---
+    path("admin/dashboard/", AdminDashboardView.as_view(), name="admin-dashboard"),
 ] + router.urls

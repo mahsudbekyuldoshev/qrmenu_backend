@@ -1,20 +1,26 @@
 from django.contrib.auth.base_user import BaseUserManager
+from django.utils.translation import gettext_lazy as _
 
 
 class UserManager(BaseUserManager):
     """
     Telefon raqam orqali autentifikatsiya qiluvchi custom foydalanuvchi manageri.
 
-    Avval email asosiy identifikator edi, endi frontend telefon raqam orqali
-    login/register qiladi (+998 XX XXX XX XX formatida). Shuning uchun asosiy
-    identifikator email emas, `phone` maydoni bo'ladi. Email endi ixtiyoriy
-    (bo'sh bo'lishi mumkin) - faqat bildirishnomalar yoki hisobot uchun saqlanadi.
+    Asosiy identifikator - email emas, `phone` maydoni (+998 XX XXX XX XX
+    formatida). Email endi ixtiyoriy - faqat bildirishnoma/hisobot uchun.
     """
 
     def _create_user(self, phone, password, **extra_fields):
         if not phone:
-            raise ValueError("Telefon raqam kiritilishi shart.")
+            raise ValueError(_("Telefon raqam kiritilishi shart."))
         phone = self.normalize_phone(phone)
+        # `AbstractUser`dan meros qolgan `username` maydoni hali ham
+        # unique=True - agar to'ldirilmasa, barcha userlarda username=""
+        # bo'lib qolib, IKKINCHI foydalanuvchi yaratilganda unique constraint
+        # xatosiga olib keladi. Shuning uchun uni ham `phone`ga tenglashtirib
+        # qo'yamiz (foydalanuvchi username orqali kirmaydi, USERNAME_FIELD
+        # baribir "phone").
+        extra_fields.setdefault("username", phone)
         user = self.model(phone=phone, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
@@ -43,8 +49,8 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("role", "super_admin")
 
         if extra_fields.get("is_staff") is not True:
-            raise ValueError("Superuser uchun is_staff=True bo'lishi shart.")
+            raise ValueError(_("Superuser uchun is_staff=True bo'lishi shart."))
         if extra_fields.get("is_superuser") is not True:
-            raise ValueError("Superuser uchun is_superuser=True bo'lishi shart.")
+            raise ValueError(_("Superuser uchun is_superuser=True bo'lishi shart."))
 
         return self._create_user(phone, password, **extra_fields)

@@ -1,17 +1,22 @@
-from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ModelSerializer
 
 from apps.models.restaurants import Category, Dish, Restaurant, Table
 from apps.models.subscriptions import Subscription
+from apps.models.users import User
 
 
 class RestaurantSerializer(ModelSerializer):
     """
-    Manager/Super Admin uchun restoran serializeri.
-    `menu_background` endi Manager panel orqali yozib bo'ladigan (read-only emas) maydon —
-    frontendda "Manager dashboard menyu foni o'zgartira oladi" talabi shu orqali ta'minlanadi.
+    Director/Manager uchun restoran serializeri.
+    `menu_background` yozib bo'ladigan (read-only emas) maydon - "boshqaruvchi
+    dashboard menyu foni o'zgartira oladi" talabi shu orqali ta'minlanadi.
+
+    TUZATISH: `subscription_end_date` maydoni Restaurant modelidan olib
+    tashlandi (endi bu ma'lumot yagona manba - `Subscription.end_date`,
+    qarang: `apps.models.subscriptions.Subscription`). Kerak bo'lsa obuna
+    holatini `restaurant.subscription_info` orqali alohida so'rang.
     """
 
     class Meta:
@@ -22,7 +27,6 @@ class RestaurantSerializer(ModelSerializer):
             "slug",
             "is_active",
             "menu_background",
-            "subscription_end_date",
             "owner",
             "created_at",
         )
@@ -31,18 +35,18 @@ class RestaurantSerializer(ModelSerializer):
             "id",
             "slug",
             "is_active",
-            "subscription_end_date",
             "owner",
             "created_at",
         )
 
     def update(self, instance, validated_data):
-        # TUZATISH: faqat 'manager' roli o'z restoranining menu_background'ini
-        # o'zgartira olishi kerak — bu tekshiruv view/permission qatlamida ham
+        # TUZATISH: faqat director/manager o'z restoranining menu_background'ini
+        # o'zgartira olishi kerak - bu view/permission qatlamida ham
         # takrorlanadi (IsRestaurantManager), lekin xavfsizlik uchun bu yerda ham
         # bloklanmagan maydonlarni tozalab qo'yamiz.
         request = self.context.get("request")
-        if request and getattr(request.user, "role", None) != "manager":
+        role = getattr(request.user, "role", None) if request else None
+        if role not in (User.Role.DIRECTOR, User.Role.MANAGER):
             validated_data.pop("menu_background", None)
         return super().update(instance, validated_data)
 
@@ -50,12 +54,19 @@ class RestaurantSerializer(ModelSerializer):
 class SuperAdminRestaurantSerializer(ModelSerializer):
     """
     Super Admin dashboard uchun kengaytirilgan serializer: obuna holati bilan birga.
-    Ro'yxatda "nechta restoran, qaysi trialda, muddati qachon tugaydi" ko'rsatish uchun.
+    Ro'yxatda "nechta restoran, obunasi faolmi, muddati qachon tugaydi" ko'rsatish uchun.
+
+    TUZATISH: obuna endi bitta reja bo'lgani uchun `plan_type` olib tashlandi,
+    o'rniga `subscription_price` va `has_active_subscription` qo'shildi.
+    `manager_phone` -> `director_phone`ga o'zgartirildi (restoran egasi endi
+    director roli, `Restaurant.owner`).
     """
 
-    plan_type = SerializerMethodField()
+    director_phone = SerializerMethodField()
+    subscription_price = SerializerMethodField()
     subscription_days_remaining = SerializerMethodField()
-    manager_phone = SerializerMethodField()
+    subscription_end_date = SerializerMethodField()
+    has_active_subscription = SerializerMethodField()
 
     class Meta:
         model = Restaurant
@@ -65,23 +76,35 @@ class SuperAdminRestaurantSerializer(ModelSerializer):
             "slug",
             "is_active",
             "owner",
-            "manager_phone",
-            "plan_type",
+            "director_phone",
+            "subscription_price",
             "subscription_days_remaining",
             "subscription_end_date",
+            "has_active_subscription",
             "created_at",
         )
         read_only_fields = fields
 
-    def get_plan_type(self, obj: Restaurant):
-        sub: Subscription | None = getattr(obj, "subscription_info", None)
-        return sub.plan_type if sub else None
+    def _get_subscription(self, obj: Restaurant) -> Subscription | None:
+        return getattr(obj, "subscription_info", None)
+
+    def get_subscription_price(self, obj: Restaurant):
+        sub = self._get_subscription(obj)
+        return sub.price if sub else None
 
     def get_subscription_days_remaining(self, obj: Restaurant):
-        sub: Subscription | None = getattr(obj, "subscription_info", None)
+        sub = self._get_subscription(obj)
         return sub.days_remaining if sub else None
 
-    def get_manager_phone(self, obj: Restaurant):
+    def get_subscription_end_date(self, obj: Restaurant):
+        sub = self._get_subscription(obj)
+        return sub.end_date if sub else None
+
+    def get_has_active_subscription(self, obj: Restaurant):
+        sub = self._get_subscription(obj)
+        return sub.has_access if sub else False
+
+    def get_director_phone(self, obj: Restaurant):
         return obj.owner.phone if obj.owner_id else None
 
 
@@ -94,16 +117,14 @@ class TableSerializer(ModelSerializer):
 
 class DishSerializer(ModelSerializer):
     """
-    Manager uchun taom serializeri (yaratish/tahrirlash/o'chirish).
+    Director/Manager uchun taom serializeri (yaratish/tahrirlash/o'chirish).
 
-    TUZATISH: avval `value.restaurant.owner_id != request.user.id` orqali
-    tekshirilardi — bu faqat "direktor" (owner) uchun ishlagan. Endi manager
-    ham, boshqa rol ham `user.restaurant` orqali bog'langani uchun tekshiruv
-    `user.restaurant_id` asosida qilinadi — bu barcha rollar uchun to'g'ri ishlaydi.
+    Tekshiruv `user.restaurant_id` asosida - bu barcha rollar uchun to'g'ri ishlaydi.
 
-    Taom qo'shish/tahrirlash huquqi FAQAT manager roliga tegishli — bu view/permission
-    qatlamida (masalan IsRestaurantManager) cheklanadi; oshpaz (chef) bu serializer
-    orqali umuman yozish so'rovi yubora olmasligi kerak (faqat GET/read-only).
+    Taom qo'shish/tahrirlash huquqi director VA manager uchun - bu view/permission
+    qatlamida (IsRestaurantManager, endi director'ni ham qamrab oladi) cheklanadi;
+    oshpaz (chef) bu serializer orqali umuman yozish so'rovi yubora olmasligi kerak
+    (faqat GET/read-only).
     """
 
     class Meta:
