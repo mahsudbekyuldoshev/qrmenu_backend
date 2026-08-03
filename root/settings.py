@@ -217,5 +217,6 @@ CACHES = {
         "LOCATION": "unique-snowflake",
     }
 }
+UNSPLASH_ACCESS_KEY = os.getenv('UNSPLASH_ACCESS_KEY')
 
 AUTH_USER_MODEL = 'apps.User'

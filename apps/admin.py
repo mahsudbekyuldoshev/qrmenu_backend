@@ -1,3 +1,4 @@
+from django.contrib import admin
 from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
@@ -10,6 +11,10 @@ from apps.models import Restaurant, Subscription, User
 from apps.permission import IsSuperAdmin
 from apps.serializers.restaurants import SuperAdminRestaurantSerializer
 
+admin.site.register(Restaurant)
+admin.site.register(User)
+admin.site.register(Subscription)
+
 
 class SuperAdminRestaurantListView(ListAPIView):
     """
@@ -19,9 +24,9 @@ class SuperAdminRestaurantListView(ListAPIView):
 
     serializer_class = SuperAdminRestaurantSerializer
     permission_classes = (IsAuthenticated, IsSuperAdmin)
-    queryset = Restaurant.objects.select_related(
-        "owner", "subscription_info"
-    ).order_by("-created_at")
+    queryset = Restaurant.objects.select_related("owner", "subscription_info").order_by(
+        "-created_at"
+    )
 
 
 class CreateRestaurantWithManagerSerializer(serializers.Serializer):

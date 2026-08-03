@@ -4,6 +4,8 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.views import (
     AdminDashboardView,
+    BackgroundSearchView,
+    BackgroundSelectView,
     CategoryViewSet,
     DirectorViewSet,
     DishViewSet,
@@ -38,6 +40,17 @@ urlpatterns = [
     path("auth/me/", MeView.as_view(), name="auth-me"),
     # --- Direktor/xodim uchun (APIView, faqat "mening restoranim") ---
     path("restaurant/me/", MyRestaurantView.as_view(), name="restaurant-me"),
+    # --- Manager: fon rasmini qidirish/tanlash (Unsplash, litsenziyasiz) ---
+    path(
+        "manager/backgrounds/search/",
+        BackgroundSearchView.as_view(),
+        name="background-search",
+    ),
+    path(
+        "manager/backgrounds/select/",
+        BackgroundSelectView.as_view(),
+        name="background-select",
+    ),
     # --- Mijoz uchun ochiq QR-menyu (APIView, auth talab qilinmaydi) ---
     path("menu/<str:qr_hash>/", PublicMenuView.as_view(), name="public-menu"),
     path(

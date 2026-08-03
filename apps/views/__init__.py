@@ -1,4 +1,5 @@
 from apps.views.auth import LoginView, MeView, RegisterView
+from apps.views.background import BackgroundSearchView, BackgroundSelectView
 from apps.views.menu import PublicMenuView, PublicOrderCreateView
 from apps.views.orders import OrderViewSet
 from apps.views.restaurants import (
