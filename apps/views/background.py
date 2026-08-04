@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import Serializer
 from rest_framework.views import APIView
 
-from apps.permission import IsRestaurantManager
+from apps.permission import IsRestaurantManagerOnly
 
 UNSPLASH_SEARCH_URL = "https://api.unsplash.com/search/photos"
 
@@ -27,7 +27,7 @@ class BackgroundSearchView(APIView):
     rasmlar EMAS (ularni ruxsatsiz ishlatish mualliflik huquqini buzadi).
     """
 
-    permission_classes = (IsAuthenticated, IsRestaurantManager)
+    permission_classes = (IsAuthenticated, IsRestaurantManagerOnly)
 
     def get(self, request):
         query = request.query_params.get("q", "restaurant interior")
@@ -87,7 +87,7 @@ class BackgroundSelectView(APIView):
     saqlash ISHI SERVERDA bajariladi.
     """
 
-    permission_classes = (IsAuthenticated, IsRestaurantManager)
+    permission_classes = (IsAuthenticated, IsRestaurantManagerOnly)
 
     def post(self, request):
         serializer = BackgroundSelectSerializer(data=request.data)

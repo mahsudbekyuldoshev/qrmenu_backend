@@ -15,6 +15,7 @@ from apps.models.manager.user_manager import UserManager
 from apps.models.restaurants import Restaurant
 from apps.models.subscriptions import Payment, Subscription
 from apps.models.users import User
+from apps.serializers.staff import generate_random_password
 
 
 def add_months(dt, months: int):
@@ -39,10 +40,13 @@ class DirectorCreateSerializer(Serializer):
     Super Admin yangi direktor hisobini yaratadi. Bosqich 1: hali restoranga
     bog'lanmagan - keyin `RestaurantAdminViewSet.assign_director` orqali
     biror restoranga biriktiriladi.
+
+    `must_change_password=True` bilan yaratiladi - direktor birinchi
+    kirganda albatta o'z parolini o'zgartirishi shart (/auth/change-password/).
     """
 
     phone = CharField(max_length=20)
-    password = CharField(min_length=8, write_only=True)
+    password = CharField(min_length=8, write_only=True, required=False, allow_blank=True)
     first_name = CharField(max_length=150, required=False, allow_blank=True)
     last_name = CharField(max_length=150, required=False, allow_blank=True)
 
@@ -53,13 +57,17 @@ class DirectorCreateSerializer(Serializer):
         return phone
 
     def create(self, validated_data):
-        return User.objects.create_user(
+        password = validated_data.get("password") or generate_random_password(12)
+        director = User.objects.create_user(
             phone=validated_data["phone"],
-            password=validated_data["password"],
+            password=password,
             first_name=validated_data.get("first_name", ""),
             last_name=validated_data.get("last_name", ""),
             role=User.Role.DIRECTOR,
+            must_change_password=True,
         )
+        director._generated_password = None if validated_data.get("password") else password
+        return director
 
 
 class DirectorSerializer(ModelSerializer):
@@ -76,16 +84,25 @@ class DirectorSerializer(ModelSerializer):
             "first_name",
             "last_name",
             "is_active",
+            "employment_status",
+            "must_change_password",
             "restaurant_id",
             "restaurant_name",
         )
-        read_only_fields = ("id", "phone", "restaurant_id", "restaurant_name")
+        read_only_fields = ("id", "phone", "restaurant_id", "restaurant_name", "must_change_password")
 
     def get_restaurant_id(self, obj: User):
         return obj.restaurant_id
 
     def get_restaurant_name(self, obj: User):
         return obj.restaurant.name if obj.restaurant_id else None
+
+    def update(self, instance, validated_data):
+        instance = super().update(instance, validated_data)
+        if "employment_status" in validated_data:
+            instance.is_active = instance.employment_status == User.EmploymentStatus.WORKING
+            instance.save(update_fields=["is_active"])
+        return instance
 
 
 # ---------------------------------------------------------------------------

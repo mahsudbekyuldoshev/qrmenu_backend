@@ -1,3 +1,8 @@
+from datetime import timedelta
+
+from django.db.models import Count, Sum
+from django.db.models.functions import TruncDate, TruncMonth, TruncWeek
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -6,6 +11,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
 from apps.models.restaurants import Restaurant
+from apps.models.subscriptions import Payment
 from apps.models.users import User
 from apps.permission import IsSuperAdmin
 from apps.serializers.super_admin import (
@@ -39,9 +45,12 @@ class DirectorViewSet(ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         director = serializer.save()
-        return Response(
-            DirectorSerializer(director).data, status=status.HTTP_201_CREATED
-        )
+
+        response_data = DirectorSerializer(director).data
+        generated = getattr(director, "_generated_password", None)
+        if generated:
+            response_data["generated_password"] = generated
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
         director = self.get_object()
@@ -121,7 +130,9 @@ class RestaurantAdminViewSet(ModelViewSet):
         subscription = getattr(restaurant, "subscription_info", None)
         if subscription is None:
             return Response([])
-        return Response(PaymentSerializer(subscription.payments.all(), many=True).data)
+        return Response(
+            PaymentSerializer(subscription.payments.all(), many=True).data
+        )
 
 
 class AdminDashboardView(APIView):
@@ -156,3 +167,74 @@ class AdminDashboardView(APIView):
             "restaurants": restaurants,
         }
         return Response(AdminDashboardSerializer(data).data)
+
+
+class AdminAnalyticsView(APIView):
+    """
+    GET /admin/analytics/?period=daily|weekly|monthly (default: monthly)
+
+    Super Admin uchun grafik ma'lumotlari:
+    - restaurants_over_time: tanlangan davr bo'yicha necha restoran qo'shilgani
+    - revenue_over_time: oylar bo'yicha yig'ilgan to'lovlar summasi
+    - total_revenue: hozirgacha yig'ilgan JAMI to'lov
+    - subscription_status: faol/tugagan obunalar soni VA foizi
+    """
+
+    permission_classes = (IsAuthenticated, IsSuperAdmin)
+
+    TRUNC_MAP = {"daily": TruncDate, "weekly": TruncWeek, "monthly": TruncMonth}
+
+    def get(self, request):
+        period = request.query_params.get("period", "monthly")
+        trunc_fn = self.TRUNC_MAP.get(period, TruncMonth)
+
+        # --- Restoranlar vaqt bo'yicha (oxirgi 12 nuqta) ---
+        restaurants_qs = (
+            Restaurant.objects.annotate(bucket=trunc_fn("created_at"))
+            .values("bucket")
+            .annotate(count=Count("id"))
+            .order_by("bucket")
+        )
+        restaurants_over_time = [
+            {"date": row["bucket"], "count": row["count"]} for row in restaurants_qs
+        ]
+
+        # --- Oylik tushum ---
+        revenue_qs = (
+            Payment.objects.annotate(bucket=TruncMonth("paid_at"))
+            .values("bucket")
+            .annotate(total=Sum("amount"))
+            .order_by("bucket")
+        )
+        revenue_over_time = [
+            {"month": row["bucket"], "total": row["total"]} for row in revenue_qs
+        ]
+
+        total_revenue = Payment.objects.aggregate(total=Sum("amount"))["total"] or 0
+
+        # --- Obuna holati (faol/tugagan), foizda ---
+        restaurants = Restaurant.objects.select_related("subscription_info")
+        total_restaurants = restaurants.count()
+        active_count = sum(
+            1
+            for r in restaurants
+            if getattr(r, "subscription_info", None) and r.subscription_info.has_access
+        )
+        expired_count = total_restaurants - active_count
+        active_percent = round((active_count / total_restaurants * 100), 1) if total_restaurants else 0
+        expired_percent = round((expired_count / total_restaurants * 100), 1) if total_restaurants else 0
+
+        return Response(
+            {
+                "restaurants_over_time": restaurants_over_time,
+                "revenue_over_time": revenue_over_time,
+                "total_revenue": total_revenue,
+                "subscription_status": {
+                    "active_count": active_count,
+                    "active_percent": active_percent,
+                    "expired_count": expired_count,
+                    "expired_percent": expired_percent,
+                    "total_restaurants": total_restaurants,
+                },
+            }
+        )

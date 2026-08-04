@@ -1,3 +1,4 @@
+from apps.models.notifications import WaiterCall
 from apps.models.orders import Order, OrderItem
 from apps.models.restaurants import Category, Dish, Restaurant, Table
 from apps.models.subscriptions import Payment, Subscription

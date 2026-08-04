@@ -137,6 +137,7 @@ class DishSerializer(ModelSerializer):
             "price",
             "image",
             "is_available",
+            "requires_kitchen",
         )
 
     def validate_category(self, value):

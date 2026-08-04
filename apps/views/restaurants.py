@@ -4,7 +4,7 @@ from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.permissions import SAFE_METHODS, IsAuthenticated
 
 from apps.models.restaurants import Category, Dish, Table
-from apps.permission import IsRestaurantManager, IsRestaurantStaff
+from apps.permission import IsRestaurantManagerOnly, IsRestaurantStaff
 from apps.serializers.restaurants import (
     CategorySerializer,
     DishSerializer,
@@ -15,11 +15,13 @@ from apps.serializers.restaurants import (
 
 class MyRestaurantView(RetrieveUpdateAPIView):
     """
-    GET: har qanday xodim (director/manager/ofitsiant/oshpaz) o'z restorani
+    GET: har qanday xodim (director/manager/waiter/chef) o'z restorani
     ma'lumotini ko'radi.
-    PATCH/PUT: director YOKI manager tahrirlashi mumkin (`IsRestaurantManager`
-    endi ikkalasini ham qamrab oladi) - masalan menu_background, restoran nomi
-    va h.k. shu orqali o'zgartiriladi.
+    PATCH/PUT: FAQAT manager (menu_background, restoran nomi va h.k.).
+
+    TUZATISH: director endi bu yerga YOZA OLMAYDI - director restoranni
+    faqat kuzatib boradi (GET), operatsion tahrirlash huquqi faqat
+    manager'da.
     """
 
     serializer_class = RestaurantSerializer
@@ -27,7 +29,7 @@ class MyRestaurantView(RetrieveUpdateAPIView):
 
     def get_permissions(self):
         if self.request.method in ("PUT", "PATCH"):
-            return [IsAuthenticated(), IsRestaurantManager()]
+            return [IsAuthenticated(), IsRestaurantManagerOnly()]
         return [IsAuthenticated()]
 
     def get_object(self):
@@ -38,10 +40,10 @@ class MyRestaurantView(RetrieveUpdateAPIView):
 
 
 class TableViewSet(viewsets.ModelViewSet):
-    """Director yoki manager stollarni boshqaradi (yaratadi/o'chiradi)."""
+    """Faqat manager stollarni boshqaradi (yaratadi/o'chiradi)."""
 
     serializer_class = TableSerializer
-    permission_classes = (IsAuthenticated, IsRestaurantManager)
+    permission_classes = (IsAuthenticated, IsRestaurantManagerOnly)
 
     def get_queryset(self):
         return Table.objects.filter(restaurant=self.request.user.restaurant)
@@ -53,11 +55,9 @@ class TableViewSet(viewsets.ModelViewSet):
 class CategoryViewSet(viewsets.ModelViewSet):
     """
     Menyu kategoriyalari.
-
-    - GET (list/retrieve): istalgan restoran xodimi (director/manager/waiter/chef)
-      ko'ra oladi - chunki oshpaz KDS panelida, ofitsiant esa buyurtma
-      ekranida menyuni ko'rishi kerak.
-    - POST/PUT/PATCH/DELETE: faqat director yoki manager.
+    - GET (list/retrieve): istalgan restoran xodimi (director/manager/
+      waiter/chef) ko'ra oladi.
+    - POST/PUT/PATCH/DELETE: FAQAT manager (director EMAS).
     """
 
     serializer_class = CategorySerializer
@@ -65,7 +65,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.request.method not in SAFE_METHODS:
-            return [IsAuthenticated(), IsRestaurantManager()]
+            return [IsAuthenticated(), IsRestaurantManagerOnly()]
         return [IsAuthenticated(), IsRestaurantStaff()]
 
     def get_queryset(self):
@@ -77,11 +77,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
 class DishViewSet(viewsets.ModelViewSet):
     """
-    Taomlar (narx, stop-list va h.k.).
-
-    Oshpaz (chef) taomlarni FAQAT ko'radi (KDS panelida "Menyu" bo'limi
-    read-only bo'lishi shart), lekin qo'sha/tahrirlay/o'chira olmaydi.
-    Bu huquq director va manager uchun.
+    Taomlar. Oshpaz (chef) va director FAQAT ko'radi (read-only), yozish
+    huquqi FAQAT manager'da.
     """
 
     serializer_class = DishSerializer
@@ -89,7 +86,7 @@ class DishViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.request.method not in SAFE_METHODS:
-            return [IsAuthenticated(), IsRestaurantManager()]
+            return [IsAuthenticated(), IsRestaurantManagerOnly()]
         return [IsAuthenticated(), IsRestaurantStaff()]
 
     def get_queryset(self):
