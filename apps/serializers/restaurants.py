@@ -1,23 +1,24 @@
 from rest_framework.exceptions import ValidationError
-from rest_framework.fields import SerializerMethodField
+from rest_framework.fields import CharField, SerializerMethodField
 from rest_framework.serializers import ModelSerializer
 
 from apps.models.restaurants import Category, Dish, Restaurant, Table
 from apps.models.subscriptions import Subscription
 from apps.models.users import User
+from apps.utils.slugs import unique_restaurant_slug
 
 
 class RestaurantSerializer(ModelSerializer):
     """
-    Director/Manager uchun restoran serializeri.
-    `menu_background` yozib bo'ladigan (read-only emas) maydon - "boshqaruvchi
-    dashboard menyu foni o'zgartira oladi" talabi shu orqali ta'minlanadi.
+    Restoran serializeri. GET - director/manager/waiter/chef hammasi ko'radi.
+    PATCH - FAQAT manager (director endi menu_background'ni O'ZGARTIRA
+    OLMAYDI, faqat ko'radi - qarang: apps.permission.IsRestaurantManagerOnly).
 
-    TUZATISH: `subscription_end_date` maydoni Restaurant modelidan olib
-    tashlandi (endi bu ma'lumot yagona manba - `Subscription.end_date`,
-    qarang: `apps.models.subscriptions.Subscription`). Kerak bo'lsa obuna
-    holatini `restaurant.subscription_info` orqali alohida so'rang.
+    Create uchun: slug yuborilmasa yoki bo'sh bo'lsa, `name`dan avtomatik
+    slugify qilinadi; bazada mavjud bo'lsa oxiriga raqam qo'shiladi.
     """
+
+    slug = CharField(required=False, allow_blank=True)
 
     class Meta:
         model = Restaurant
@@ -33,21 +34,40 @@ class RestaurantSerializer(ModelSerializer):
 
         read_only_fields = (
             "id",
-            "slug",
             "is_active",
             "owner",
             "created_at",
         )
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        name = attrs.get("name") or getattr(self.instance, "name", "")
+        raw_slug = (attrs.get("slug") or "").strip()
+        if self.instance is None:
+            # create
+            attrs["slug"] = unique_restaurant_slug(name, preferred=raw_slug or None)
+        elif "slug" in attrs:
+            # update: faqat yuborilgan non-empty slugni qabul qilamiz
+            if raw_slug:
+                attrs["slug"] = unique_restaurant_slug(
+                    name, preferred=raw_slug, exclude_pk=self.instance.pk
+                )
+            else:
+                attrs.pop("slug", None)
+        return attrs
+
+    def create(self, validated_data):
+        if not validated_data.get("slug"):
+            validated_data["slug"] = unique_restaurant_slug(validated_data["name"])
+        return super().create(validated_data)
+
     def update(self, instance, validated_data):
-        # TUZATISH: faqat director/manager o'z restoranining menu_background'ini
-        # o'zgartira olishi kerak - bu view/permission qatlamida ham
-        # takrorlanadi (IsRestaurantManager), lekin xavfsizlik uchun bu yerda ham
-        # bloklanmagan maydonlarni tozalab qo'yamiz.
         request = self.context.get("request")
         role = getattr(request.user, "role", None) if request else None
-        if role not in (User.Role.DIRECTOR, User.Role.MANAGER):
+        if role != User.Role.MANAGER:
             validated_data.pop("menu_background", None)
+        # Oddiy /restaurant/me/ PATCH da slug o'zgarmasligi kerak
+        validated_data.pop("slug", None)
         return super().update(instance, validated_data)
 
 
@@ -121,8 +141,8 @@ class DishSerializer(ModelSerializer):
 
     Tekshiruv `user.restaurant_id` asosida - bu barcha rollar uchun to'g'ri ishlaydi.
 
-    Taom qo'shish/tahrirlash huquqi director VA manager uchun - bu view/permission
-    qatlamida (IsRestaurantManager, endi director'ni ham qamrab oladi) cheklanadi;
+    Taom qo'shish/tahrirlash huquqi FAQAT manager uchun (director EMAS) - bu
+    view/permission qatlamida (IsRestaurantManagerOnly) cheklanadi;
     oshpaz (chef) bu serializer orqali umuman yozish so'rovi yubora olmasligi kerak
     (faqat GET/read-only).
     """

@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal
 
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncDate, TruncMonth, TruncWeek
@@ -199,16 +200,37 @@ class AdminAnalyticsView(APIView):
             {"date": row["bucket"], "count": row["count"]} for row in restaurants_qs
         ]
 
-        # --- Oylik tushum ---
+        # --- Oylik tushum (oxirgi 12 oy, bo'sh oylar 0 bilan to'ldiriladi) ---
         revenue_qs = (
             Payment.objects.annotate(bucket=TruncMonth("paid_at"))
             .values("bucket")
             .annotate(total=Sum("amount"))
             .order_by("bucket")
         )
-        revenue_over_time = [
-            {"month": row["bucket"], "total": row["total"]} for row in revenue_qs
-        ]
+        revenue_map = {
+            row["bucket"].date().replace(day=1) if hasattr(row["bucket"], "date") else row["bucket"]: row["total"]
+            for row in revenue_qs
+            if row["bucket"]
+        }
+
+        now = timezone.now()
+        revenue_over_time = []
+        for i in range(11, -1, -1):
+            # i oy oldin
+            year = now.year
+            month = now.month - i
+            while month <= 0:
+                month += 12
+                year -= 1
+            bucket = timezone.datetime(year, month, 1, tzinfo=timezone.get_current_timezone()).date()
+            # match keys that may be datetime or date
+            total = Decimal("0")
+            for k, v in revenue_map.items():
+                kd = k.date() if hasattr(k, "date") else k
+                if kd.year == year and kd.month == month:
+                    total = v or Decimal("0")
+                    break
+            revenue_over_time.append({"month": f"{year}-{month:02d}-01", "total": total})
 
         total_revenue = Payment.objects.aggregate(total=Sum("amount"))["total"] or 0
 

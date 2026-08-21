@@ -5,14 +5,10 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from apps.serializers.auth import (
     ChangePasswordSerializer,
+    ProfileUpdateSerializer,
     RestoFlowTokenObtainPairSerializer,
     UserSerializer,
 )
-
-# TUZATISH: RegisterView OLIB TASHLANDI. Endi ochiq ro'yxatdan o'tish yo'q -
-# barcha hisoblar ierarxik tarzda yaratiladi:
-#   super_admin -> director (apps.views.admin.DirectorViewSet)
-#   director/manager -> manager/waiter/chef (apps.views.staff.StaffViewSet)
 
 
 class LoginView(TokenObtainPairView):
@@ -23,11 +19,28 @@ class LoginView(TokenObtainPairView):
 
 
 class MeView(GenericAPIView):
+    """GET/PATCH /auth/me/ — joriy foydalanuvchi profili."""
+
     permission_classes = (IsAuthenticated,)
-    serializer_class = UserSerializer
+
+    def get_serializer_class(self):
+        if self.request.method in ("PATCH", "PUT"):
+            return ProfileUpdateSerializer
+        return UserSerializer
 
     def get(self, request):
-        return Response(self.get_serializer(request.user).data)
+        return Response(UserSerializer(request.user).data)
+
+    def patch(self, request):
+        serializer = ProfileUpdateSerializer(
+            request.user, data=request.data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(UserSerializer(request.user).data)
+
+    def put(self, request):
+        return self.patch(request)
 
 
 class ChangePasswordView(GenericAPIView):

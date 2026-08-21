@@ -21,6 +21,7 @@ class UserSerializer(ModelSerializer):
         fields = (
             "id",
             "phone",
+            "email",
             "first_name",
             "last_name",
             "role",
@@ -42,6 +43,24 @@ class UserSerializer(ModelSerializer):
     @extend_schema_field(OpenApiTypes.STR)
     def get_restaurant_name(self, obj: User) -> Optional[str]:
         return obj.restaurant.name if obj.restaurant_id else None
+
+
+class ProfileUpdateSerializer(ModelSerializer):
+    """PATCH /auth/me/ — foydalanuvchi o'z ismi/emailini yangilaydi."""
+
+    class Meta:
+        model = User
+        fields = ("first_name", "last_name", "email")
+
+    def validate_email(self, value):
+        if not value:
+            return value
+        qs = User.objects.filter(email__iexact=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError("Bu email allaqachon band.")
+        return value
 
 
 class RestoFlowTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -67,6 +86,13 @@ class RestoFlowTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
+        # Frontend ko'pincha "901234567" yuboradi; DB da "+998901234567"
+        from apps.models.manager.user_manager import UserManager
+
+        phone_key = self.username_field
+        if phone_key in attrs and attrs[phone_key]:
+            attrs[phone_key] = UserManager.normalize_phone(str(attrs[phone_key]))
+
         data = super().validate(attrs)
 
         if self.user.role != User.Role.SUPER_ADMIN and not self.user.is_working:

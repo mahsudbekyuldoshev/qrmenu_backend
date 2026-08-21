@@ -16,6 +16,7 @@ from apps.models.restaurants import Restaurant
 from apps.models.subscriptions import Payment, Subscription
 from apps.models.users import User
 from apps.serializers.staff import generate_random_password
+from apps.utils.slugs import unique_restaurant_slug
 
 
 def add_months(dt, months: int):
@@ -160,13 +161,23 @@ class RestaurantAdminCreateSerializer(ModelSerializer):
     sifatida beriladi (price/months ixtiyoriy - berilmasa default narx va
     1 oylik muddat qo'llanadi). Direktor bu bosqichda bog'lanmaydi - alohida
     `assign_director` action orqali biriktiriladi.
+
+    `slug` ixtiyoriy: kelmasa yoki bo'sh bo'lsa `name`dan avtomatik generatsiya.
     """
 
+    slug = CharField(required=False, allow_blank=True)
     subscription = SubscriptionInlineSerializer(write_only=True, required=False)
 
     class Meta:
         model = Restaurant
         fields = ("id", "name", "slug", "is_active", "subscription")
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        name = attrs.get("name", "")
+        raw_slug = (attrs.get("slug") or "").strip()
+        attrs["slug"] = unique_restaurant_slug(name, preferred=raw_slug or None)
+        return attrs
 
     def create(self, validated_data):
         sub_data = validated_data.pop("subscription", {})
@@ -183,23 +194,25 @@ class RestaurantAdminCreateSerializer(ModelSerializer):
 
 
 class AssignDirectorSerializer(Serializer):
-    """Mavjud (restoranga hali biriktirilmagan) direktorni restoranga bog'laydi."""
+    """
+    Direktorni restoranga bog'laydi.
+    Bir direktor bir nechta restoranga `owner` bo'lishi mumkin;
+    `User.restaurant` faqat birinchi (asosiy) restoran sifatida saqlanadi.
+    """
 
     director_id = IntegerField()
 
     def validate_director_id(self, value):
         try:
-            director = User.objects.get(id=value, role=User.Role.DIRECTOR)
+            return User.objects.get(id=value, role=User.Role.DIRECTOR)
         except User.DoesNotExist:
             raise ValidationError("Bunday direktor topilmadi.")
-        if director.restaurant_id:
-            raise ValidationError("Bu direktor allaqachon boshqa restoranga biriktirilgan.")
-        return director
 
     def save(self, restaurant: Restaurant):
         director = self.validated_data["director_id"]
-        director.restaurant = restaurant
-        director.save(update_fields=["restaurant"])
+        if not director.restaurant_id:
+            director.restaurant = restaurant
+            director.save(update_fields=["restaurant"])
         restaurant.owner = director
         restaurant.save(update_fields=["owner"])
         return restaurant
