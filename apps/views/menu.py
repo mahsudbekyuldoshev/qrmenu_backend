@@ -1,4 +1,10 @@
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+)
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -10,12 +16,24 @@ from apps.permission import IsRestaurantStaff
 from apps.serializers.menu import PublicCategorySerializer, PublicRestaurantSerializer
 from apps.serializers.notifications import WaiterCallSerializer
 
+QR_HASH_PARAM = OpenApiParameter(
+    name="qr_hash",
+    type=str,
+    location=OpenApiParameter.PATH,
+    description="Stolga tegishli QR-kod hash'i.",
+)
 
+
+@extend_schema(tags=["Public Menu"])
 class PublicMenuView(APIView):
     """Mijoz uchun ochiq menyu. Auth kerak emas - stol QR-hash orqali kiriladi."""
 
     permission_classes = (AllowAny,)
 
+    @extend_schema(
+        parameters=[QR_HASH_PARAM],
+        responses={200: OpenApiResponse(description="Restoran va menyu ma'lumotlari.")},
+    )
     def get(self, request, qr_hash):
         table = get_object_or_404(Table, qr_hash=qr_hash, is_active=True)
         categories = Category.objects.filter(
@@ -35,11 +53,43 @@ class PublicMenuView(APIView):
         )
 
 
+@extend_schema(tags=["Public Menu"])
 class PublicOrderCreateView(APIView):
     """Mijoz stol orqali buyurtma beradi. Auth kerak emas."""
 
     permission_classes = (AllowAny,)
 
+    @extend_schema(
+        parameters=[QR_HASH_PARAM],
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "dish": {"type": "integer"},
+                                "quantity": {"type": "integer", "default": 1},
+                            },
+                        },
+                    }
+                },
+            }
+        },
+        responses={
+            201: OpenApiResponse(description="Yaratilgan buyurtma id va summasi."),
+            400: OpenApiResponse(description="Taom tanlanmagan yoki mavjud emas."),
+        },
+        examples=[
+            OpenApiExample(
+                "Buyurtma so'rovi",
+                value={"items": [{"dish": 1, "quantity": 2}, {"dish": 5, "quantity": 1}]},
+                request_only=True,
+            ),
+        ],
+    )
     def post(self, request, qr_hash):
         table = get_object_or_404(Table, qr_hash=qr_hash, is_active=True)
         items_data = request.data.get("items", [])
@@ -72,6 +122,7 @@ class PublicOrderCreateView(APIView):
         return Response({"order_id": order.id, "total_price": str(order.total_price)}, status=201)
 
 
+@extend_schema(tags=["Public Menu"])
 class CallWaiterView(APIView):
     """
     POST /menu/{qr_hash}/call-waiter/
@@ -82,6 +133,11 @@ class CallWaiterView(APIView):
 
     permission_classes = (AllowAny,)
 
+    @extend_schema(
+        parameters=[QR_HASH_PARAM],
+        request=None,
+        responses={201: WaiterCallSerializer},
+    )
     def post(self, request, qr_hash):
         table = get_object_or_404(Table, qr_hash=qr_hash, is_active=True)
         call = WaiterCall.objects.create(
@@ -90,6 +146,7 @@ class CallWaiterView(APIView):
         return Response(WaiterCallSerializer(call).data, status=201)
 
 
+@extend_schema(tags=["Public Menu"])
 class RequestPaymentView(APIView):
     """
     POST /menu/{qr_hash}/request-payment/  body: {"order_id": 123}
@@ -99,6 +156,17 @@ class RequestPaymentView(APIView):
 
     permission_classes = (AllowAny,)
 
+    @extend_schema(
+        parameters=[QR_HASH_PARAM],
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {"order_id": {"type": "integer"}},
+                "required": ["order_id"],
+            }
+        },
+        responses={201: WaiterCallSerializer},
+    )
     def post(self, request, qr_hash):
         table = get_object_or_404(Table, qr_hash=qr_hash, is_active=True)
         order_id = request.data.get("order_id")
@@ -114,6 +182,7 @@ class RequestPaymentView(APIView):
         return Response(WaiterCallSerializer(call).data, status=201)
 
 
+@extend_schema(tags=["Staff / Waiter Calls"])
 class WaiterCallResolveView(APIView):
     """
     PATCH /waiter-calls/{id}/resolve/
@@ -122,6 +191,10 @@ class WaiterCallResolveView(APIView):
 
     permission_classes = (IsAuthenticated, IsRestaurantStaff)
 
+    @extend_schema(
+        request=None,
+        responses={200: WaiterCallSerializer},
+    )
     def patch(self, request, pk):
         from django.utils import timezone
 

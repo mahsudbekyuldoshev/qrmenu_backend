@@ -1,6 +1,12 @@
 import requests
 from django.conf import settings
 from django.core.files.base import ContentFile
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+)
 from rest_framework.exceptions import ValidationError
 from rest_framework.fields import CharField, IntegerField
 from rest_framework.permissions import IsAuthenticated
@@ -13,6 +19,7 @@ from apps.permission import IsRestaurantManagerOnly
 UNSPLASH_SEARCH_URL = "https://api.unsplash.com/search/photos"
 
 
+@extend_schema(tags=["Manager / Backgrounds"])
 class BackgroundSearchView(APIView):
     """
     GET /api/v1/manager/backgrounds/search/?q=uzbek+restaurant&page=1
@@ -29,6 +36,29 @@ class BackgroundSearchView(APIView):
 
     permission_classes = (IsAuthenticated, IsRestaurantManagerOnly)
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="q",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Qidiruv so'zi (default: 'restaurant interior').",
+            ),
+            OpenApiParameter(
+                name="page",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Sahifa raqami (default: 1).",
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(description="Unsplash qidiruv natijalari."),
+            502: OpenApiResponse(description="Rasm qidiruv xizmati vaqtincha ishlamayapti."),
+            503: OpenApiResponse(description="UNSPLASH_ACCESS_KEY sozlanmagan."),
+        },
+    )
     def get(self, request):
         query = request.query_params.get("q", "restaurant interior")
         page = request.query_params.get("page", 1)
@@ -76,6 +106,7 @@ class BackgroundSelectSerializer(Serializer):
     unsplash_id = CharField(required=False, allow_blank=True)
 
 
+@extend_schema(tags=["Manager / Backgrounds"])
 class BackgroundSelectView(APIView):
     """
     POST /api/v1/manager/backgrounds/select/
@@ -89,6 +120,20 @@ class BackgroundSelectView(APIView):
 
     permission_classes = (IsAuthenticated, IsRestaurantManagerOnly)
 
+    @extend_schema(
+        request=BackgroundSelectSerializer,
+        responses={200: OpenApiResponse(description="Yangilangan menu_background URL'i.")},
+        examples=[
+            OpenApiExample(
+                "Tanlash so'rovi",
+                value={
+                    "image_url": "https://images.unsplash.com/photo-123",
+                    "unsplash_id": "abc123",
+                },
+                request_only=True,
+            ),
+        ],
+    )
     def post(self, request):
         serializer = BackgroundSelectSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

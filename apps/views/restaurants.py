@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import RetrieveUpdateAPIView
@@ -13,6 +14,7 @@ from apps.serializers.restaurants import (
 )
 
 
+@extend_schema(tags=["Restaurant"])
 class MyRestaurantView(RetrieveUpdateAPIView):
     """
     GET: har qanday xodim (director/manager/waiter/chef) o'z restorani
@@ -39,6 +41,14 @@ class MyRestaurantView(RetrieveUpdateAPIView):
         return restaurant
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Manager / Tables"]),
+    retrieve=extend_schema(tags=["Manager / Tables"]),
+    create=extend_schema(tags=["Manager / Tables"]),
+    update=extend_schema(tags=["Manager / Tables"]),
+    partial_update=extend_schema(tags=["Manager / Tables"]),
+    destroy=extend_schema(tags=["Manager / Tables"]),
+)
 class TableViewSet(viewsets.ModelViewSet):
     """Faqat manager stollarni boshqaradi (yaratadi/o'chiradi)."""
 
@@ -52,6 +62,14 @@ class TableViewSet(viewsets.ModelViewSet):
         serializer.save(restaurant=self.request.user.restaurant)
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Menu / Categories"]),
+    retrieve=extend_schema(tags=["Menu / Categories"]),
+    create=extend_schema(tags=["Menu / Categories"]),
+    update=extend_schema(tags=["Menu / Categories"]),
+    partial_update=extend_schema(tags=["Menu / Categories"]),
+    destroy=extend_schema(tags=["Menu / Categories"]),
+)
 class CategoryViewSet(viewsets.ModelViewSet):
     """
     Menyu kategoriyalari.
@@ -75,6 +93,14 @@ class CategoryViewSet(viewsets.ModelViewSet):
         serializer.save(restaurant=self.request.user.restaurant)
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Menu / Dishes"]),
+    retrieve=extend_schema(tags=["Menu / Dishes"]),
+    create=extend_schema(tags=["Menu / Dishes"]),
+    update=extend_schema(tags=["Menu / Dishes"]),
+    partial_update=extend_schema(tags=["Menu / Dishes"]),
+    destroy=extend_schema(tags=["Menu / Dishes"]),
+)
 class DishViewSet(viewsets.ModelViewSet):
     """
     Taomlar. Oshpaz (chef) va director FAQAT ko'radi (read-only), yozish

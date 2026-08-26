@@ -1,3 +1,9 @@
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
@@ -31,6 +37,25 @@ ALLOWED_TRANSITIONS = {
 }
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=["Orders"],
+        parameters=[
+            OpenApiParameter(
+                name="status",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Vergul bilan ajratilgan status'lar bo'yicha filtr (masalan: pending,preparing).",
+            ),
+        ],
+    ),
+    retrieve=extend_schema(tags=["Orders"]),
+    create=extend_schema(tags=["Orders"]),
+    update=extend_schema(tags=["Orders"]),
+    partial_update=extend_schema(tags=["Orders"]),
+    destroy=extend_schema(tags=["Orders"]),
+)
 class OrderViewSet(ModelViewSet):
     """
     Buyurtmalar - manager/director/waiter/chef uchun ochiq (IsRestaurantStaff).
@@ -58,6 +83,7 @@ class OrderViewSet(ModelViewSet):
         serializer.save(restaurant=self.request.user.restaurant)
 
 
+@extend_schema(tags=["Staff / Kitchen"])
 class KitchenQueueView(APIView):
     """
     GET /kitchen/queue/
@@ -71,6 +97,7 @@ class KitchenQueueView(APIView):
 
     permission_classes = (IsAuthenticated, IsRestaurantStaff)
 
+    @extend_schema(responses=OrderItemSerializer(many=True))
     def get(self, request):
         items = (
             OrderItem.objects.filter(
@@ -84,6 +111,7 @@ class KitchenQueueView(APIView):
         return Response(OrderItemSerializer(items, many=True).data)
 
 
+@extend_schema(tags=["Staff / Waiter"])
 class WaiterQueueView(APIView):
     """
     GET /waiter/queue/
@@ -98,6 +126,13 @@ class WaiterQueueView(APIView):
 
     permission_classes = (IsAuthenticated, IsRestaurantStaff)
 
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(
+                description="Tayyor itemlar va hal qilinmagan chaqiruvlar ro'yxati.",
+            )
+        }
+    )
     def get(self, request):
         ready_items = (
             OrderItem.objects.filter(
@@ -119,6 +154,7 @@ class WaiterQueueView(APIView):
         )
 
 
+@extend_schema(tags=["Orders"])
 class OrderItemStatusUpdateView(APIView):
     """
     PATCH /order-items/{id}/status/  body: {"status": "ready"}
@@ -134,6 +170,13 @@ class OrderItemStatusUpdateView(APIView):
 
     permission_classes = (IsAuthenticated, IsRestaurantStaff)
 
+    @extend_schema(
+        request=OrderItemStatusUpdateSerializer,
+        responses={
+            200: OrderItemSerializer,
+            403: OpenApiResponse(description="Rolingiz uchun bu status o'tishi ruxsat etilmagan."),
+        },
+    )
     def patch(self, request, pk):
         item = get_object_or_404(
             OrderItem, pk=pk, order__restaurant=request.user.restaurant

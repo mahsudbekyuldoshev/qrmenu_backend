@@ -1,3 +1,4 @@
+from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -14,6 +15,18 @@ VISIBLE_ROLES_BY_VIEWER = {
 }
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Staff"]),
+    retrieve=extend_schema(tags=["Staff"]),
+    create=extend_schema(
+        tags=["Staff"],
+        request=StaffCreateSerializer,
+        responses={201: StaffSerializer},
+    ),
+    update=extend_schema(tags=["Staff"]),
+    partial_update=extend_schema(tags=["Staff"]),
+    destroy=extend_schema(tags=["Staff"]),
+)
 class StaffViewSet(ModelViewSet):
     """
     Director/Manager o'z restoranidagi xodimlarni yaratadi/ko'radi/

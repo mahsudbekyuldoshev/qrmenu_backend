@@ -4,6 +4,12 @@ from decimal import Decimal
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncDate, TruncMonth, TruncWeek
 from django.utils import timezone
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -27,6 +33,18 @@ from apps.serializers.super_admin import (
 )
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Super Admin / Directors"]),
+    retrieve=extend_schema(tags=["Super Admin / Directors"]),
+    create=extend_schema(
+        tags=["Super Admin / Directors"],
+        request=DirectorCreateSerializer,
+        responses={201: DirectorSerializer},
+    ),
+    update=extend_schema(tags=["Super Admin / Directors"]),
+    partial_update=extend_schema(tags=["Super Admin / Directors"]),
+    destroy=extend_schema(tags=["Super Admin / Directors"]),
+)
 class DirectorViewSet(ModelViewSet):
     """
     Super Admin - direktor hisoblarini yaratadi/ko'radi/tahrirlaydi/o'chiradi.
@@ -63,6 +81,18 @@ class DirectorViewSet(ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Super Admin / Restaurants"]),
+    retrieve=extend_schema(tags=["Super Admin / Restaurants"]),
+    create=extend_schema(
+        tags=["Super Admin / Restaurants"],
+        request=RestaurantAdminCreateSerializer,
+        responses={201: RestaurantAdminDetailSerializer},
+    ),
+    update=extend_schema(tags=["Super Admin / Restaurants"]),
+    partial_update=extend_schema(tags=["Super Admin / Restaurants"]),
+    destroy=extend_schema(tags=["Super Admin / Restaurants"]),
+)
 class RestaurantAdminViewSet(ModelViewSet):
     """
     Super Admin - restoranlarni yaratadi/ko'radi/tahrirlaydi/o'chiradi,
@@ -88,6 +118,11 @@ class RestaurantAdminViewSet(ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    @extend_schema(
+        tags=["Super Admin / Restaurants"],
+        request=AssignDirectorSerializer,
+        responses={200: RestaurantAdminDetailSerializer},
+    )
     @action(detail=True, methods=["post"], url_path="assign-director")
     def assign_director(self, request, pk=None):
         """POST /admin/restaurants/{id}/assign-director/  body: {"director_id": N}"""
@@ -97,6 +132,14 @@ class RestaurantAdminViewSet(ModelViewSet):
         serializer.save(restaurant=restaurant)
         return Response(RestaurantAdminDetailSerializer(restaurant).data)
 
+    @extend_schema(
+        tags=["Super Admin / Restaurants"],
+        request=RenewSubscriptionSerializer,
+        responses={
+            201: OpenApiResponse(description="Yangilangan restoran va to'lov ma'lumotlari."),
+            400: OpenApiResponse(description="Bu restoranda obuna topilmadi."),
+        },
+    )
     @action(detail=True, methods=["post"], url_path="renew-subscription")
     def renew_subscription(self, request, pk=None):
         """
@@ -124,6 +167,11 @@ class RestaurantAdminViewSet(ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    @extend_schema(
+        tags=["Super Admin / Restaurants"],
+        request=None,
+        responses={200: PaymentSerializer(many=True)},
+    )
     @action(detail=True, methods=["get"], url_path="payments")
     def payments(self, request, pk=None):
         """GET /admin/restaurants/{id}/payments/ - to'lovlar tarixi."""
@@ -136,6 +184,7 @@ class RestaurantAdminViewSet(ModelViewSet):
         )
 
 
+@extend_schema(tags=["Super Admin / Dashboard"])
 class AdminDashboardView(APIView):
     """
     GET /admin/dashboard/
@@ -145,6 +194,7 @@ class AdminDashboardView(APIView):
 
     permission_classes = (IsAuthenticated, IsSuperAdmin)
 
+    @extend_schema(responses=AdminDashboardSerializer)
     def get(self, request):
         restaurants = Restaurant.objects.select_related(
             "owner", "subscription_info"
@@ -170,6 +220,7 @@ class AdminDashboardView(APIView):
         return Response(AdminDashboardSerializer(data).data)
 
 
+@extend_schema(tags=["Super Admin / Dashboard"])
 class AdminAnalyticsView(APIView):
     """
     GET /admin/analytics/?period=daily|weekly|monthly (default: monthly)
@@ -185,6 +236,19 @@ class AdminAnalyticsView(APIView):
 
     TRUNC_MAP = {"daily": TruncDate, "weekly": TruncWeek, "monthly": TruncMonth}
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="period",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                enum=["daily", "weekly", "monthly"],
+                description="Analitika davri (default: monthly).",
+            ),
+        ],
+        responses={200: OpenApiResponse(description="Restoranlar/tushum vaqt bo'yicha va obuna holati.")},
+    )
     def get(self, request):
         period = request.query_params.get("period", "monthly")
         trunc_fn = self.TRUNC_MAP.get(period, TruncMonth)
