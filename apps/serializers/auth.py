@@ -124,7 +124,13 @@ class ChangePasswordSerializer(Serializer):
         return value
 
     def validate_new_password(self, value):
-        validate_password(value)
+        # XATOLIK EDI: `user=` berilmagani uchun Django'ning
+        # UserAttributeSimilarityValidator (agar AUTH_PASSWORD_VALIDATORS'da
+        # yoqilgan bo'lsa) parolni foydalanuvchining phone/ism/familiyasi
+        # bilan solishtira olmasdi va bu tekshiruv jimgina o'tkazib
+        # yuborilardi. `user` context'ini uzatib to'g'irlandi.
+        user = self.context["request"].user
+        validate_password(value, user=user)
         return value
 
     def save(self):

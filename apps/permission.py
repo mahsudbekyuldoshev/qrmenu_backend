@@ -1,5 +1,7 @@
 from rest_framework.permissions import BasePermission
 
+from apps.models.users import User
+
 
 class IsRestaurantStaff(BasePermission):
     """
@@ -35,7 +37,7 @@ class IsRestaurantManagerOnly(BasePermission):
             user
             and user.is_authenticated
             and user.restaurant_id is not None
-            and user.role == "manager"
+            and user.role == User.Role.MANAGER
         )
 
 
@@ -48,7 +50,7 @@ class IsRestaurantDirectorOnly(BasePermission):
             user
             and user.is_authenticated
             and user.restaurant_id is not None
-            and user.role == "director"
+            and user.role == User.Role.DIRECTOR
         )
 
 
@@ -64,7 +66,7 @@ class IsRestaurantDirectorOrManager(BasePermission):
             user
             and user.is_authenticated
             and user.restaurant_id is not None
-            and user.role in ("director", "manager")
+            and user.role in (User.Role.DIRECTOR, User.Role.MANAGER)
         )
 
 
@@ -77,7 +79,7 @@ class IsRestaurantChef(BasePermission):
             user
             and user.is_authenticated
             and user.restaurant_id is not None
-            and user.role == "chef"
+            and user.role == User.Role.CHEF
         )
 
 
@@ -90,7 +92,7 @@ class IsRestaurantWaiter(BasePermission):
             user
             and user.is_authenticated
             and user.restaurant_id is not None
-            and user.role == "waiter"
+            and user.role == User.Role.WAITER
         )
 
 
@@ -102,5 +104,5 @@ class IsSuperAdmin(BasePermission):
         return bool(
             user
             and user.is_authenticated
-            and user.role == "super_admin"
+            and user.role == User.Role.SUPER_ADMIN
         )

@@ -183,7 +183,14 @@ class RestaurantAdminCreateSerializer(ModelSerializer):
         sub_data = validated_data.pop("subscription", {})
         restaurant = Restaurant.objects.create(**validated_data)
 
-        price = sub_data.get("price") or Subscription._meta.get_field("price").default
+        # XATOLIK EDI: `sub_data.get("price") or default` - agar admin
+        # obuna narxini ATAYLAB 0 qilib yubormoqchi bo'lsa (masalan sinov/
+        # aksiya restorani), Decimal("0") Python'da falsy bo'lgani uchun
+        # `or` operatori uni jimgina model default narxiga almashtirib
+        # qo'yardi. Endi faqat qiymat umuman yuborilmagan (None) holatda
+        # default ishlatiladi.
+        raw_price = sub_data.get("price")
+        price = raw_price if raw_price is not None else Subscription._meta.get_field("price").default
         months = sub_data.get("months", 1)
         Subscription.objects.create(
             restaurant=restaurant,

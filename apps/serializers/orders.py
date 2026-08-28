@@ -37,8 +37,17 @@ class OrderSerializer(ModelSerializer):
     alohida ishlanadi.
     """
 
+    # XATOLIK EDI: `required=True` bo'lgani uchun OrderViewSet (ModelViewSet)
+    # orqali PUT/PATCH qilinganda (masalan faqat `comment`ni yangilash uchun)
+    # klient har safar to'liq `uploaded_items` massivini qayta yuborishga
+    # majbur bo'lardi. Battari - `update()` umuman override QILINMAGANI
+    # uchun PUT/PATCH'da yuborilgan `uploaded_items` hech qanday amalga
+    # oshmasdi (na yangi item yaratilardi, na eski item o'zgartirilardi) -
+    # instance'ga shunchaki ishlatilmaydigan atribut sifatida yozilib,
+    # klientni chalg'itardi ("yubordim-ku, nega o'zgarmadi"). Endi faqat
+    # create paytida majburiy, update paytida e'tiborga olinmaydi.
     items = OrderItemSerializer(many=True, read_only=True)
-    uploaded_items = JSONField(write_only=True, required=True)
+    uploaded_items = JSONField(write_only=True, required=False)
 
     status_display = CharField(source="get_status_display", read_only=True)
     restaurant_name = ReadOnlyField(source="restaurant.name")
@@ -61,6 +70,15 @@ class OrderSerializer(ModelSerializer):
             "created_at",
         )
         read_only_fields = "id", "restaurant", "status", "total_price", "created_at"
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        # Faqat YARATISHDA items majburiy - yangilashda (`self.instance`
+        # mavjud bo'lsa) items o'zgartirilmaydi, shuning uchun talab
+        # qilinmaydi.
+        if self.instance is None and not attrs.get("uploaded_items"):
+            raise ValidationError({"uploaded_items": "Kamida bitta taom kiritilishi shart."})
+        return attrs
 
     def validate_uploaded_items(self, value):
         if not value:
@@ -112,6 +130,14 @@ class OrderSerializer(ModelSerializer):
         order.save(update_fields=["total_price"])
         order.refresh_status()
         return order
+
+    def update(self, instance, validated_data):
+        # `uploaded_items` update() orqali hech qachon qayta ishlanmaydi -
+        # buyurtma tarkibini o'zgartirish uchun alohida oqim (masalan yangi
+        # item qo'shish endpointi) kerak bo'ladi, bu yerda faqat
+        # `table`/`comment` kabi oddiy maydonlar yangilanadi.
+        validated_data.pop("uploaded_items", None)
+        return super().update(instance, validated_data)
 
 
 class OrderItemStatusUpdateSerializer(Serializer):
