@@ -81,7 +81,7 @@ class Subscription(Model):
     def total_paid(self) -> Decimal:
         """Obuna boshlanganidan beri restoran qancha to'lov qilgani (Payment yig'indisi)."""
         result = self.payments.aggregate(total=Sum("amount"))["total"]
-        return result or Decimal("0")
+        return result or Decimal(0)
 
 
 class Payment(Model):

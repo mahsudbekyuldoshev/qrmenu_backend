@@ -7,8 +7,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=restoflow_db
-      - POSTGRES_USER=restoflow_user
-      - POSTGRES_PASSWORD=maxfiy_parol
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=1
     ports:
       - "5432:5432"
 
@@ -19,7 +19,7 @@ services:
 
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
+    command: uv run python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
     ports:

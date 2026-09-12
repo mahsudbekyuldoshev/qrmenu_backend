@@ -278,7 +278,7 @@ class RestaurantAdminDetailSerializer(ModelSerializer):
 
     def get_total_paid(self, obj):
         sub = self._sub(obj)
-        return sub.total_paid if sub else Decimal("0")
+        return sub.total_paid if sub else Decimal(0)
 
     def get_staff_count(self, obj):
         # director + manager + waiter + chef - hammasi shu restoranga

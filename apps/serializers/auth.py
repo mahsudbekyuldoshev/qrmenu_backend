@@ -1,4 +1,3 @@
-from typing import Optional
 
 from django.contrib.auth.password_validation import validate_password
 from drf_spectacular.types import OpenApiTypes
@@ -33,15 +32,15 @@ class UserSerializer(ModelSerializer):
         )
 
     @extend_schema_field(OpenApiTypes.INT)
-    def get_restaurant_id(self, obj: User) -> Optional[int]:
+    def get_restaurant_id(self, obj: User) -> int | None:
         return obj.restaurant_id
 
     @extend_schema_field(OpenApiTypes.STR)
-    def get_restaurant_slug(self, obj: User) -> Optional[str]:
+    def get_restaurant_slug(self, obj: User) -> str | None:
         return obj.restaurant.slug if obj.restaurant_id else None
 
     @extend_schema_field(OpenApiTypes.STR)
-    def get_restaurant_name(self, obj: User) -> Optional[str]:
+    def get_restaurant_name(self, obj: User) -> str | None:
         return obj.restaurant.name if obj.restaurant_id else None
 
 
@@ -90,7 +89,7 @@ class RestoFlowTokenObtainPairSerializer(TokenObtainPairSerializer):
         from apps.models.manager.user_manager import UserManager
 
         phone_key = self.username_field
-        if phone_key in attrs and attrs[phone_key]:
+        if attrs.get(phone_key):
             attrs[phone_key] = UserManager.normalize_phone(str(attrs[phone_key]))
 
         data = super().validate(attrs)

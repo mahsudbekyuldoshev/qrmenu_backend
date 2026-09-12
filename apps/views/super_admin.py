@@ -1,4 +1,3 @@
-from datetime import timedelta
 from decimal import Decimal
 
 from django.db.models import Count, Sum
@@ -288,11 +287,11 @@ class AdminAnalyticsView(APIView):
                 year -= 1
             bucket = timezone.datetime(year, month, 1, tzinfo=timezone.get_current_timezone()).date()
             # match keys that may be datetime or date
-            total = Decimal("0")
+            total = Decimal(0)
             for k, v in revenue_map.items():
                 kd = k.date() if hasattr(k, "date") else k
                 if kd.year == year and kd.month == month:
-                    total = v or Decimal("0")
+                    total = v or Decimal(0)
                     break
             revenue_over_time.append({"month": f"{year}-{month:02d}-01", "total": total})
 

@@ -2,7 +2,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.models import Category, Dish, Order, Restaurant, Table, User
+from apps.models import Category, Dish, Order, OrderItem, Restaurant, Table, User
 
 
 class BaseOrderTestCase(APITestCase):
@@ -189,9 +189,16 @@ class OrderUpdateTests(BaseOrderTestCase):
         self.detail_url = reverse("order-detail", kwargs={"pk": self.order.id})
 
     def test_chef_can_update_status_to_preparing(self):
+        # Buyurtma holati itemlar orqali boshqariladi, to'g'ridan-to'g'ri emas.
+        # Avval item yaratib olish kerak.
+        OrderItem.objects.create(order=self.order, dish=self.dish, price=self.dish.price, status=OrderItem.Status.PENDING)
+        
         self.client.force_authenticate(user=self.chef)
+        # Item statusini yangilash
+        item = self.order.items.first()
+        update_url = reverse("order-item-status", kwargs={"pk": item.id})
         response = self.client.patch(
-            self.detail_url, {"status": Order.Status.PREPARING}, format="json"
+            update_url, {"status": OrderItem.Status.PREPARING}, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.order.refresh_from_db()
